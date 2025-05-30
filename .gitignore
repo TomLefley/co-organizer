@@ -1,0 +1,149 @@
+# Gradle
+.gradle/
+build/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# Java
+*.class
+*.jar
+!gradle-wrapper.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+
+# IDE Files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+*~
+
+# Eclipse
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.settings/
+.loadpath
+.recommenders
+.project
+.classpath
+.factorypath
+.buildpath
+.target
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+
+# JVM crash logs
+hs_err_pid*
+
+# Test output
+/out/
+/test-output/
+
+# Burp Suite specific
+*.burp
+burp-*.log
+burp_state.burp
+
+# Extension development
+*.jar.original
+extension-*.jar
+!build/libs/extension-template-project.jar
+
+# Local configuration
+local.properties
+config.properties
+
+# Security - Never commit these
+*.key
+*.pem
+*.p12
+*.keystore
+*.jks
+secrets.yml
+secrets.yaml
+.env
+.env.local
+.env.*.local
+
+# Coverage reports
+jacoco.exec
+/build/reports/jacoco/
+/build/jacoco/
+
+# Build artifacts
+/build/libs/*.jar
+/build/distributions/
+/build/publications/
+/build/resources/
+/build/classes/
+/build/generated/
+/build/tmp/
+
+# Cache directories
+.cache/
+.m2/
+.ivy2/
+
+# Node (if using any JS tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Documentation build
+/docs/build/
+/docs/_build/
+
+# Backup files
+*.backup
+*.old
+*~
+
+# Local development
+dev-notes.md
+scratch/
+todo.txt
