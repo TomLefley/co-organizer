@@ -1,6 +1,8 @@
 package dev.lefley.coorganizer.service;
 
 import burp.api.montoya.MontoyaApi;
+import dev.lefley.coorganizer.ui.components.BurpIcon;
+import dev.lefley.coorganizer.ui.components.BurpIconFile;
 
 import javax.swing.*;
 import java.awt.*;
@@ -12,17 +14,29 @@ public class NotificationService {
         this.api = api;
     }
     
-    public void showToast(String message) {
+    public void showSuccessToast(String message) {
+        showToast(message, ToastType.SUCCESS);
+    }
+    
+    public void showErrorToast(String message) {
+        showToast(message, ToastType.ERROR);
+    }
+    
+    private void showToast(String message, ToastType type) {
         api.logging().logToOutput("Showing toast notification: " + message);
         
         SwingUtilities.invokeLater(() -> {
             try {
                 Window parentWindow = findBurpWindow();
-                createToastWindow(message, parentWindow);
+                createToastWindow(message, type, parentWindow);
             } catch (Exception e) {
                 api.logging().logToError("Failed to show toast notification: " + e.getMessage());
             }
         });
+    }
+    
+    private enum ToastType {
+        SUCCESS, ERROR
     }
     
     private Window findBurpWindow() {
@@ -40,11 +54,11 @@ public class NotificationService {
         return windows.length > 0 ? windows[0] : null;
     }
     
-    private void createToastWindow(String message, Window parentWindow) {
+    private void createToastWindow(String message, ToastType type, Window parentWindow) {
         JWindow toastWindow = new JWindow();
         toastWindow.setAlwaysOnTop(true);
         
-        JPanel toastPanel = createToastPanel(message);
+        JPanel toastPanel = createToastPanel(message, type);
         toastWindow.add(toastPanel);
         toastWindow.pack();
         
@@ -52,17 +66,15 @@ public class NotificationService {
         
         toastWindow.setVisible(true);
         
-        Timer timer = new Timer(4000, e -> {
-            toastWindow.setVisible(false);
-            toastWindow.dispose();
-        });
-        timer.setRepeats(false);
-        timer.start();
+        // Show toast for 1 second, then fade out over 1 second
+        Timer showTimer = new Timer(1000, e -> startFadeOut(toastWindow));
+        showTimer.setRepeats(false);
+        showTimer.start();
         
         api.logging().logToOutput("Toast notification displayed successfully");
     }
     
-    private JPanel createToastPanel(String message) {
+    private JPanel createToastPanel(String message, ToastType type) {
         JPanel toastPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -90,13 +102,36 @@ public class NotificationService {
         messageLabel.setFont(messageLabel.getFont().deriveFont(Font.PLAIN, 12f));
         toastPanel.add(messageLabel, BorderLayout.CENTER);
         
-        String iconText = message.toLowerCase().contains("failed") || message.toLowerCase().contains("error") ? "❌" : "✅";
-        JLabel iconLabel = new JLabel(iconText);
-        iconLabel.setFont(iconLabel.getFont().deriveFont(14f));
+        // Create icon based on toast type
+        BurpIconFile iconFile = type == ToastType.ERROR ? BurpIconFile.WARNING : BurpIconFile.TICK;
+        Icon icon = new BurpIcon.Builder(iconFile).fontSized().build();
+        JLabel iconLabel = new JLabel(icon);
         iconLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 8));
         toastPanel.add(iconLabel, BorderLayout.WEST);
         
         return toastPanel;
+    }
+    
+    private void startFadeOut(JWindow toastWindow) {
+        final float[] opacity = {1.0f};
+        final int fadeSteps = 20;
+        final int fadeDelay = 50; // milliseconds between steps (1000ms total fade)
+        
+        Timer fadeTimer = new Timer(fadeDelay, null);
+        fadeTimer.addActionListener(e -> {
+            opacity[0] -= 1.0f / fadeSteps;
+            
+            if (opacity[0] <= 0.0f) {
+                toastWindow.setVisible(false);
+                toastWindow.dispose();
+                fadeTimer.stop();
+                api.logging().logToOutput("Toast notification faded out and disposed");
+            } else {
+                toastWindow.setOpacity(Math.max(0.0f, opacity[0]));
+            }
+        });
+        
+        fadeTimer.start();
     }
     
     private void positionToast(JWindow toastWindow, Window parentWindow) {

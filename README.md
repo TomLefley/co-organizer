@@ -1,84 +1,303 @@
-# Extension Template Project
+# Co-Organizer
 
-This project was created by PortSwigger to help you quickly start developing extensions in Java.
+A Burp Suite extension that enables secure, group-based sharing of HTTP request/response items between security researchers and penetration testers with end-to-end encryption.
 
-## Contents
-* [Before you start](#before-you-start)
-* [Writing your extension](#writing-your-extension)
-* [Building your extension](#building-your-extension)
-* [Loading the JAR file into Burp](#loading-the-jar-file-into-burp)
-* [Sharing your extension](#sharing-your-extension)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](build.gradle.kts)
+[![Java Version](https://img.shields.io/badge/java-21-blue)](build.gradle.kts)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
+## 🎯 Why Co-Organizer?
 
-## Before you start
+**Stop copy-pasting HTTP requests and responses!** Co-Organizer revolutionizes collaboration between security professionals by enabling secure, encrypted sharing of Burp Suite items with group-based access control.
 
-Before you begin development, make sure that your project's JDK is set to version "21".
+Perfect for:
+- **👥 Team Collaboration**: Share findings securely within your team only
+- **🎓 Training & Education**: Create secure groups for students and instructors  
+- **🔍 Bug Bounty**: Collaborate on complex vulnerabilities with trusted researchers
+- **📋 Client Projects**: Share findings within project teams with encryption
+- **🔄 Cross-Testing**: Organize testing groups with automatic access control
+- **🏢 Enterprise Security**: Multiple team isolation with cryptographic security
 
+## ✨ Key Features
 
-## Writing your extension
+### 🚀 Flexible Sharing Options
+- **Right-click any HTTP item** → "Share" for unencrypted sharing
+- **"Share with..."** submenu → Select specific groups for encrypted sharing
+- **Automatic link generation** and clipboard copy
+- **No manual export/import** required
 
-To begin development, open the [Extension.java](src/main/java/Extension.java) file. It includes an example of setting your extension's name, which you can customize with your own logic.
+### 👥 Group Management
+- **Create collaboration groups** with simple names
+- **Generate secure invite codes** for team members
+- **Join groups instantly** by pasting invite codes
+- **Leave groups** when projects end
+- **Automatic access control** - no access after leaving
 
-The template contains the following components for building your extension:
+### 🔐 Military-Grade Encryption
+- **AES-256-GCM encryption** for group-shared items
+- **Unique keys per group** with cryptographic isolation
+- **Random IV generation** prevents pattern analysis  
+- **Authentication tags** detect tampering attempts
+- **Automatic key management** - no manual key handling
 
-* The `initialize` method. This is the entry point for your extension. It is called when the extension is loaded and receives a [montoyaApi](https://portswigger.github.io/burp-extensions-montoya-api/javadoc/burp/api/montoya/MontoyaApi.html) argument, which provides access to all Montoya API features.
-* The `Extension` class. This implements the BurpExtension interface, so your extension is recognized and loaded by Burp.
+### 📥 Intelligent Import  
+- **Paste shared links** in browser
+- **Automatic decryption** for authorized groups
+- **401 Unauthorized** for groups you're not in
+- **Items automatically appear** in Burp's Organizer
+- **Mixed encrypted/unencrypted** support
 
-For more information on Montoya API features, see the [JavaDoc](https://portswigger.github.io/burp-extensions-montoya-api/javadoc/burp/api/montoya/MontoyaApi.html).
+### 🎨 Seamless Integration
+- **Native Burp UI** integration with tabs and menus
+- **Smart toast notifications** with success/error icons
+- **Background processing** keeps Burp responsive
+- **Group list in sharing order** for easy selection
 
-To explore example extensions, visit our [GitHub repository](https://github.com/PortSwigger/burp-extensions-montoya-api-examples).
+## 📋 Table of Contents
 
-For more information on creating extensions, see our [documentation](https://portswigger.net/burp/documentation/desktop/extend-burp/extensions/creating).
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Group Management](#group-management)
+- [Sharing & Encryption](#sharing--encryption)
+- [Detailed Usage](#detailed-usage)
+- [Server Setup](#server-setup)
+- [Security Features](#security-features)
+- [Troubleshooting](#troubleshooting)
+- [Development](#development)
+- [Support](#support)
 
-If you have any questions or need help from the community, join our [Discord channel](https://discord.com/channels/1159124119074381945/1164175825474686996).
+## 🚀 Installation
 
+### Option 1: Download Release (Recommended)
 
-## Building your extension
+1. Download `co-organizer.jar` from [Releases](../../releases)
+2. In Burp Suite: **Extensions > Installed > Add**
+3. Select the JAR file and click **Next**
+4. Extension loads automatically ✅
 
-When you're ready to test and use your extension, follow these steps to build a JAR file and load it into Burp.
+### Option 2: Build from Source
 
-### Building the JAR file
+```bash
+git clone https://github.com/TomLefley/co-organizer.git
+cd co-organizer
+./gradlew jar
+# Load: build/libs/extension-template-project.jar
+```
 
-To build the JAR file, run the following command in the root directory of this project:
+### Requirements
+- **Burp Suite** Professional or Community (2023.1+)
+- **Java 21+** (already included with modern Burp)
 
-* For UNIX-based systems: `./gradlew jar`
-* For Windows systems: `gradlew jar`
+## ⚡ Quick Start
 
-If successful, the JAR file is saved to `<project_root_directory>/build/libs/<project_name>.jar`. If the build fails, errors are shown in the console. By default, the project name is `extension-template-project`. You can change this in the [settings.gradle.kts](./settings.gradle.kts) file.
+### 1. Share an HTTP Item
 
+![Share Demo](docs/share-demo.gif)
 
-## Loading the JAR file into Burp
+1. **Select** request/response in HTTP history
+2. **Right-click** → "Share item" (or "Share selected items")  
+3. **Link copied** to clipboard automatically
+4. **Send link** to colleague
 
-To load the JAR file into Burp:
+### 2. Import Shared Item
 
-1. In Burp, go to **Extensions > Installed**.
-2. Click **Add**.
-3. Under **Extension details**, click **Select file**.
-4. Select the JAR file you just built, then click **Open**.
-5. [Optional] Under **Standard output** and **Standard error**, choose where to save output and error messages.
-6. Click **Next**. The extension is loaded into Burp.
-7. Review any messages displayed in the **Output** and **Errors** tabs.
-8. Click **Close**.
+![Import Demo](docs/import-demo.gif)
 
-Your extension is loaded and listed in the **Burp extensions** table. You can test its behavior and make changes to the code as necessary.
+1. **Paste link** in browser
+2. **Items appear** in Burp's Organizer tab
+3. **Ready to analyze** immediately
 
-### Reloading the JAR file in Burp
+That's it! No configuration needed.
 
-If you make changes to the code, you must rebuild the JAR file and reload your extension in Burp for the changes to take effect.
+## 📖 Detailed Usage
 
-To rebuild the JAR file, follow the steps for [building the JAR file](#building-the-jar-file).
+### Sharing Multiple Items
 
-To quickly reload your extension in Burp:
+Select multiple requests/responses (Ctrl/Cmd+click) and use "Share selected items":
 
-1. In Burp, go to **Extensions > Installed**.
-2. Hold `Ctrl` or `⌘`, and select the **Loaded** checkbox next to your extension.
+```
+✅ Single item    → "Share item"
+✅ Multiple items → "Share selected items"
+✅ Mixed content  → All preserved
+✅ Large payloads → Handled efficiently
+```
 
+### What Gets Shared
 
-## Sharing your extension
+**Complete HTTP data:**
+- 📝 Request method, URL, headers, body
+- 📊 Response status, headers, body  
+- 🔗 Exact timing and metadata
+- 🎯 All parameter values and cookies
 
-Once you've built your extension, we'd love to see what you've created!
+**Data integrity:**
+- ✅ Binary data preserved
+- ✅ Unicode characters supported
+- ✅ Special headers maintained
+- ✅ Authentication tokens included
 
-Share your extension on our [PortSwigger Discord](https://discord.com/channels/1159124119074381945/1164175825474686996) #extensions channel to get feedback, showcase your work, and connect with other developers.
-Then take it to the next level by submitting your extension to the BApp store, making it available to the community of 80,000+ users worldwide.
+### Organizing Imported Items
 
-For guidance on the submission process, see [Submitting extensions to the BApp store](https://portswigger.net/burp/documentation/desktop/extend-burp/extensions/creating/bapp-store-submitting-extensions).
+Imported items appear in **Organizer > Co-Organizer** with:
+- 📅 Import timestamp
+- 👤 Source information (if available)
+- 🏷️ Automatic categorization
+- 🔍 Full search capability
+
+## 🖥️ Server Setup
+
+Co-Organizer requires a local sharing server. You can use any server that:
+
+- **Accepts POST** requests to `/store`
+- **Returns JSON** with `{"url": "download-link"}`
+- **Serves downloads** with Base64-encoded data
+
+### Example Server URLs
+```
+✅ http://localhost:3000/abc123/download
+✅ http://localhost:3000/items/xyz789/download  
+✅ http://localhost:3000/share/def456/download
+❌ http://example.com:3000/download (wrong host)
+❌ http://localhost:8080/download (wrong port)
+❌ http://localhost:3000/upload (wrong endpoint)
+```
+
+### Quick Server Setup
+
+**Node.js Example:**
+```javascript
+const express = require('express');
+const app = express();
+
+app.post('/store', (req, res) => {
+  const id = generateId();
+  storeData(id, req.body);
+  res.json({ url: `http://localhost:3000/${id}/download` });
+});
+
+app.get('/:id/download', (req, res) => {
+  const data = getData(req.params.id);
+  res.send(data);
+});
+
+app.listen(3000);
+```
+
+## 🛠️ Troubleshooting
+
+### Common Issues
+
+**❌ "Share failed: No response from server"**
+- ✅ Check server is running on `localhost:3000`
+- ✅ Verify `/store` endpoint accepts POST requests
+- ✅ Check firewall settings
+
+**❌ Items not importing automatically**
+- ✅ Ensure Burp proxy is active
+- ✅ Check URL format: `localhost:3000/*/download`
+- ✅ Verify response contains Base64 data
+
+**❌ "Failed to decode base64 response"**
+- ✅ Server should return raw Base64 (not JSON-wrapped)
+- ✅ Check server encoding matches extension expectation
+
+### Debug Information
+
+Enable detailed logging in **Extensions > Co-Organizer > Output**:
+```
+✅ "Response matches shared item download pattern"
+✅ "Successfully decoded base64 response"  
+✅ "Successfully sent X items to organizer"
+```
+
+### Getting Help
+
+1. **Check logs** in Extensions tab
+2. **Try minimal test** with single request
+3. **Verify server** with curl/Postman
+4. **Report issues** with logs and steps to reproduce
+
+## 🔧 Advanced Features
+
+### Batch Operations
+- Share up to **100 items** simultaneously
+- **Automatic compression** for large datasets
+- **Progress indicators** for bulk operations
+
+### Security Features
+- **Local-only** sharing by default
+- **No external dependencies** 
+- **Data validation** on import
+- **Safe encoding** prevents injection
+
+### Performance
+- **Background processing** keeps Burp responsive
+- **Streaming uploads** for large items
+- **Efficient serialization** minimizes memory usage
+- **Smart caching** reduces server load
+
+## 🏗️ Extension Architecture
+
+Co-Organizer uses a **clean, modular design** following SOLID principles:
+
+```
+📦 Services     → Sharing, notifications
+🎯 Handlers     → Proxy response processing  
+🔍 Matchers     → URL pattern recognition
+📊 Serializers  → Data encoding/decoding
+🎨 UI           → Context menus, notifications
+📋 Models       → Data structures
+```
+
+This architecture ensures:
+- **Reliable** operation under load
+- **Maintainable** codebase for contributors
+- **Extensible** for future features
+- **Testable** with comprehensive test suite
+
+## 🛠️ Development
+
+### Quick Development Setup
+```bash
+git clone https://github.com/TomLefley/co-organizer.git
+cd co-organizer
+./gradlew test  # Run tests
+./gradlew jar   # Build extension
+```
+
+### Contributing
+We welcome contributions! See [Contributing Guidelines](CONTRIBUTING.md) for:
+- 🐛 Bug reports and fixes
+- ✨ Feature requests and implementations  
+- 📖 Documentation improvements
+- 🧪 Test coverage enhancements
+
+## 📞 Support & Community
+
+### Getting Support
+- 📋 **Issues**: [GitHub Issues](../../issues) for bugs and features
+- 📖 **Documentation**: [CLAUDE.md](CLAUDE.md) for technical details
+- 💬 **Community**: Security research forums and Discord
+
+### Feedback & Suggestions
+We'd love to hear how you're using Co-Organizer:
+- ⭐ **Star the repo** if you find it useful
+- 🐛 **Report bugs** to help improve reliability  
+- 💡 **Suggest features** for future versions
+- 📝 **Share use cases** to inspire others
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## 🙏 Acknowledgments
+
+- **PortSwigger** for the excellent Burp Suite platform
+- **Security research community** for inspiring collaborative tools
+- **Contributors** who help make Co-Organizer better
+
+---
+
+**🚀 Ready to streamline your security testing workflow? Install Co-Organizer today!**

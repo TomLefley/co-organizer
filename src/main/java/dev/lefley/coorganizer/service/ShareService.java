@@ -4,7 +4,11 @@ import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.http.HttpService;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.http.message.requests.HttpRequest;
+import dev.lefley.coorganizer.crypto.CryptoUtils;
+import dev.lefley.coorganizer.model.Group;
 import dev.lefley.coorganizer.serialization.HttpRequestResponseSerializer;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
@@ -20,35 +24,62 @@ public class ShareService {
     private final MontoyaApi api;
     private final HttpRequestResponseSerializer serializer;
     private final NotificationService notificationService;
+    private final Gson gson;
     
     public ShareService(MontoyaApi api) {
         this.api = api;
         this.serializer = new HttpRequestResponseSerializer(api);
         this.notificationService = new NotificationService(api);
+        this.gson = new Gson();
     }
     
     public void shareItems(List<HttpRequestResponse> selectedItems) {
-        api.logging().logToOutput("Starting shareSelectedItems with " + selectedItems.size() + " items");
+        shareItems(selectedItems, null);
+    }
+    
+    public void shareItems(List<HttpRequestResponse> selectedItems, Group group) {
+        api.logging().logToOutput("Starting shareSelectedItems with " + selectedItems.size() + " items" + 
+            (group != null ? " for group: " + group.getName() : " (no group)"));
         
         try {
             String jsonData = serializer.serialize(selectedItems);
             api.logging().logToOutput("JSON serialization complete. Data length: " + jsonData.length());
-            api.logging().logToOutput("JSON data preview (first 500 chars): " + jsonData.substring(0, Math.min(500, jsonData.length())));
             
-            String url = uploadToStore(jsonData);
+            // Create the outer JSON structure
+            JsonObject outerJson = new JsonObject();
+            
+            if (group != null) {
+                // Encrypt the data using the group's key
+                String encryptedData = CryptoUtils.encrypt(jsonData, group.getSymmetricKey());
+                outerJson.addProperty("fingerprint", group.getFingerprint());
+                outerJson.addProperty("data", encryptedData);
+                api.logging().logToOutput("Data encrypted for group: " + group.getName());
+            } else {
+                // No encryption, just wrap in outer JSON
+                outerJson.addProperty("data", jsonData);
+                api.logging().logToOutput("Data not encrypted (no group specified)");
+            }
+            
+            String finalJsonData = gson.toJson(outerJson);
+            api.logging().logToOutput("Final JSON structure created. Length: " + finalJsonData.length());
+            
+            String url = uploadToStore(finalJsonData);
             
             if (url != null) {
                 copyToClipboard(url);
                 api.logging().logToOutput("URL copied to clipboard: " + url);
-                notificationService.showToast("Sharing link copied to clipboard!");
+                String message = group != null ? 
+                    "Sharing link copied to clipboard! (encrypted for " + group.getName() + ")" :
+                    "Sharing link copied to clipboard!";
+                notificationService.showSuccessToast(message);
             } else {
                 api.logging().logToError("Failed to extract URL from response");
-                notificationService.showToast("Share failed: could not extract link from response");
+                notificationService.showErrorToast("Share failed: could not extract link from response");
             }
             
         } catch (Exception e) {
             api.logging().logToError("Error sharing items: " + e.getClass().getSimpleName() + " - " + e.getMessage());
-            notificationService.showToast("Share failed: " + e.getClass().getSimpleName());
+            notificationService.showErrorToast("Share failed: " + e.getClass().getSimpleName());
             e.printStackTrace();
         }
     }
@@ -89,11 +120,11 @@ public class ShareService {
                 return extractUrlFromResponse(responseBodyStr);
             } else {
                 api.logging().logToError("HTTP request failed. Status: " + statusCode + ", Body: " + responseBodyStr);
-                notificationService.showToast("Share failed: HTTP " + statusCode);
+                notificationService.showErrorToast("Share failed: HTTP " + statusCode);
             }
         } else {
             api.logging().logToError("No response received from HTTP request");
-            notificationService.showToast("Share failed: No response from server");
+            notificationService.showErrorToast("Share failed: No response from server");
         }
         
         return null;

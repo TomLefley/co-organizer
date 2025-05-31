@@ -8,13 +8,15 @@ repositories {
 
 dependencies {
     compileOnly("net.portswigger.burp.extensions:montoya-api:2025.5")
+    compileOnly("com.formdev:flatlaf:3.2.5")
+    compileOnly("com.formdev:flatlaf-extras:3.2.5")
     implementation("com.google.code.gson:gson:2.10.1")
     
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
     testImplementation("org.mockito:mockito-core:5.5.0")
     testImplementation("org.mockito:mockito-junit-jupiter:5.5.0")
     testImplementation("org.assertj:assertj-core:3.24.2")
-    testCompileOnly("net.portswigger.burp.extensions:montoya-api:2025.5")
+    testImplementation("net.portswigger.burp.extensions:montoya-api:2025.5")
 }
 
 tasks.test {

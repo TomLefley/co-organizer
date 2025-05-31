@@ -7,21 +7,34 @@ import burp.api.montoya.proxy.http.InterceptedResponse;
 import burp.api.montoya.proxy.http.ProxyResponseHandler;
 import burp.api.montoya.proxy.http.ProxyResponseReceivedAction;
 import burp.api.montoya.proxy.http.ProxyResponseToBeSentAction;
+import dev.lefley.coorganizer.crypto.CryptoUtils;
 import dev.lefley.coorganizer.matcher.SharedItemDownloadMatcher;
+import dev.lefley.coorganizer.model.Group;
 import dev.lefley.coorganizer.serialization.HttpRequestResponseSerializer;
+import dev.lefley.coorganizer.service.GroupManager;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 import java.util.Base64;
 import java.util.List;
 
 public class SharedItemDownloadResponseHandler implements ProxyResponseHandler {
+    private static final String IMPORTED_MESSAGE = "[shared item imported]";
+    private static final short SUCCESS_STATUS_CODE = 201;
+    private static final short UNAUTHORIZED_STATUS_CODE = 401;
+    
     private final MontoyaApi api;
     private final SharedItemDownloadMatcher matcher;
     private final HttpRequestResponseSerializer serializer;
+    private final GroupManager groupManager;
+    private final Gson gson;
     
     public SharedItemDownloadResponseHandler(MontoyaApi api) {
         this.api = api;
         this.matcher = new SharedItemDownloadMatcher(api);
         this.serializer = new HttpRequestResponseSerializer(api);
+        this.groupManager = new GroupManager(api);
+        this.gson = new Gson();
     }
     
     @Override
@@ -32,13 +45,21 @@ public class SharedItemDownloadResponseHandler implements ProxyResponseHandler {
         if (matcher.matches(interceptedResponse)) {
             api.logging().logToOutput("Response matches shared item download pattern, processing...");
             
-            // Process in background thread to avoid blocking proxy
-            new Thread(() -> processDownload(interceptedResponse)).start();
+            // Check if user has access to decrypt the data
+            ProcessResult result = processDownload(interceptedResponse);
             
-            // Do not intercept, change status code to 201
-            api.logging().logToOutput("Setting status code to 201 and not intercepting");
-            HttpResponse modifiedResponse = interceptedResponse.withBody("[shared item imported]").withStatusCode((short) 201);
-            return ProxyResponseReceivedAction.doNotIntercept(modifiedResponse);
+            if (result == ProcessResult.UNAUTHORIZED) {
+                api.logging().logToOutput("User does not have access to this group, setting status code to 401");
+                HttpResponse unauthorizedResponse = interceptedResponse.withBody("Unauthorized").withStatusCode(UNAUTHORIZED_STATUS_CODE);
+                return ProxyResponseReceivedAction.doNotIntercept(unauthorizedResponse);
+            } else if (result == ProcessResult.SUCCESS) {
+                api.logging().logToOutput("Successfully processed shared items, setting status code to 201");
+                HttpResponse modifiedResponse = interceptedResponse.withBody(IMPORTED_MESSAGE).withStatusCode(SUCCESS_STATUS_CODE);
+                return ProxyResponseReceivedAction.doNotIntercept(modifiedResponse);
+            } else {
+                api.logging().logToError("Failed to process shared items, continuing with original response");
+                return ProxyResponseReceivedAction.continueWith(interceptedResponse);
+            }
             
         } else {
             api.logging().logToOutput("Response does not match shared item download pattern, continuing");
@@ -51,24 +72,69 @@ public class SharedItemDownloadResponseHandler implements ProxyResponseHandler {
         return ProxyResponseToBeSentAction.continueWith(interceptedResponse);
     }
     
-    private void processDownload(InterceptedResponse interceptedResponse) {
+    private enum ProcessResult {
+        SUCCESS, UNAUTHORIZED, ERROR
+    }
+    
+    private ProcessResult processDownload(InterceptedResponse interceptedResponse) {
         try {
             String responseBody = interceptedResponse.bodyToString();
             api.logging().logToOutput("Response body length: " + responseBody.length());
-            api.logging().logToOutput("Response body preview (first 200 chars): " + responseBody.substring(0, Math.min(200, responseBody.length())));
             
-            String decodedJsonData = decodeBase64Response(responseBody);
-            if (decodedJsonData == null) {
-                return;
+            String outerJsonData = decodeBase64Response(responseBody);
+            if (outerJsonData == null) {
+                return ProcessResult.ERROR;
             }
             
-            List<HttpRequestResponse> httpItems = serializer.deserialize(decodedJsonData);
+            // Parse the outer JSON structure
+            JsonObject outerJson = gson.fromJson(outerJsonData, JsonObject.class);
+            
+            String actualData;
+            if (outerJson.has("fingerprint")) {
+                // Encrypted data - need to decrypt
+                String fingerprint = outerJson.get("fingerprint").getAsString();
+                String encryptedData = outerJson.get("data").getAsString();
+                
+                api.logging().logToOutput("Found encrypted data for fingerprint: " + fingerprint);
+                
+                // Refresh groups to ensure we have the latest data (in case user left a group)
+                groupManager.refreshGroupsFromPreferences();
+                
+                // Find the group with this fingerprint
+                Group group = findGroupByFingerprint(fingerprint);
+                if (group == null) {
+                    api.logging().logToOutput("User does not have access to group with fingerprint: " + fingerprint);
+                    return ProcessResult.UNAUTHORIZED;
+                }
+                
+                // Decrypt the data
+                api.logging().logToOutput("Decrypting data using group: " + group.getName());
+                actualData = CryptoUtils.decrypt(encryptedData, group.getSymmetricKey());
+                
+            } else {
+                // Unencrypted data
+                actualData = outerJson.get("data").getAsString();
+                api.logging().logToOutput("Processing unencrypted shared data");
+            }
+            
+            // Deserialize and send to organizer
+            List<HttpRequestResponse> httpItems = serializer.deserialize(actualData);
             sendToOrganizer(httpItems);
+            
+            return ProcessResult.SUCCESS;
             
         } catch (Exception e) {
             api.logging().logToError("Error processing shared item download: " + e.getClass().getSimpleName() + " - " + e.getMessage());
             e.printStackTrace();
+            return ProcessResult.ERROR;
         }
+    }
+    
+    private Group findGroupByFingerprint(String fingerprint) {
+        return groupManager.getGroups().stream()
+            .filter(group -> group.getFingerprint().equals(fingerprint))
+            .findFirst()
+            .orElse(null);
     }
     
     private String decodeBase64Response(String responseBody) {
