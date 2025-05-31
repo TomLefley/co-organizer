@@ -4,7 +4,7 @@ A Burp Suite extension that enables secure, group-based sharing of HTTP request/
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](build.gradle.kts)
 [![Java Version](https://img.shields.io/badge/java-21-blue)](build.gradle.kts)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![License](https://img.shields.io/badge/license-GPL--3-blue)](LICENSE)
 
 ## 🎯 Why Co-Organizer?
 
@@ -290,7 +290,7 @@ We'd love to hear how you're using Co-Organizer:
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) for details.
+GPL-3 License - see [LICENSE](LICENSE) for details.
 
 ## 🙏 Acknowledgments
 
