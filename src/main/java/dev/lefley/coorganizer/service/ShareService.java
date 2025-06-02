@@ -25,6 +25,7 @@ public class ShareService {
     private final MontoyaApi api;
     private final HttpRequestResponseSerializer serializer;
     private final NotificationService notificationService;
+    private final DebugIdManager debugIdManager;
     private final Gson gson;
     private final Logger logger;
     
@@ -32,6 +33,7 @@ public class ShareService {
         this.api = api;
         this.serializer = new HttpRequestResponseSerializer(api);
         this.notificationService = new NotificationService(api);
+        this.debugIdManager = new DebugIdManager(api);
         this.gson = new Gson();
         this.logger = new Logger(api, ShareService.class);
     }
@@ -100,11 +102,21 @@ public class ShareService {
         logger.debug("Created multipart form data with boundary: " + boundary);
         logger.trace("Multipart body length: " + multipartBody.length());
         
-        HttpRequest request = HttpRequest.httpRequest()
+        HttpRequest.Builder requestBuilder = HttpRequest.httpRequest()
                 .withMethod("POST")
                 .withPath(STORE_PATH)
                 .withHeader("Content-Type", "multipart/form-data; boundary=" + boundary)
-                .withHeader("Host", STORE_HOST + ":" + STORE_PORT)
+                .withHeader("Host", STORE_HOST + ":" + STORE_PORT);
+        
+        // Add debug ID header if enabled
+        if (debugIdManager.isDebugIdEnabled()) {
+            requestBuilder.withHeader("X-Debug-Id", debugIdManager.getDebugId());
+            logger.debug("Added debug ID header to request");
+        } else {
+            logger.debug("Debug ID disabled - not adding header to request");
+        }
+        
+        HttpRequest request = requestBuilder
                 .withBody(multipartBody)
                 .withService(httpService);
         

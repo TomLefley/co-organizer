@@ -62,6 +62,7 @@ Perfect for:
 - [Detailed Usage](#detailed-usage)
 - [Server Setup](#server-setup)
 - [Security Features](#security-features)
+- [Privacy & Debug ID](#privacy--debug-id)
 - [Troubleshooting](#troubleshooting)
 - [Development](#development)
 - [Support](#support)
@@ -229,12 +230,60 @@ Enable detailed logging in **Extensions > Co-Organizer > Output**:
 - **No external dependencies** 
 - **Data validation** on import
 - **Safe encoding** prevents injection
+- **Privacy-respecting debug ID** for optional troubleshooting
 
 ### Performance
 - **Background processing** keeps Burp responsive
 - **Streaming uploads** for large items
 - **Efficient serialization** minimizes memory usage
 - **Smart caching** reduces server load
+
+## 🔒 Privacy & Debug ID
+
+Co-Organizer includes a **privacy-respecting debug system** to help with troubleshooting while protecting user privacy.
+
+### How Debug ID Works
+
+- **Automatic Generation**: A unique UUID is generated on first startup
+- **Optional Transmission**: Sent as `X-Debug-Id` header only in sharing requests
+- **Privacy Control**: Users can disable by clearing the ID
+- **No Regeneration**: Once cleared, stays cleared until manually regenerated
+
+### Debug ID States
+
+```
+🆔 Generated    → UUID sent in requests (default)
+🚫 Cleared      → No header sent (privacy mode)
+🔄 Regenerated  → New UUID generated and sent
+```
+
+### Privacy Options
+
+**For privacy-conscious users:**
+
+1. **View current debug ID**: Check Burp extension logs on startup
+2. **Disable debug ID**: Clear the `co-organizer.debug-id` preference
+3. **Keep disabled**: Once cleared, it won't regenerate automatically
+
+**Technical details:**
+- Stored in Burp's preference system as `co-organizer.debug-id`
+- Empty string = intentionally disabled (respects user choice)
+- `null` = not set yet (will generate new UUID)
+- Valid UUID = enabled and will be sent in requests
+
+### Server Implementation
+
+Your sharing server will receive the debug ID (if enabled) as:
+```http
+X-Debug-Id: 12345678-1234-1234-1234-123456789012
+```
+
+Use this for:
+- Troubleshooting user-specific issues
+- Correlating related requests
+- Usage analytics (if permitted)
+
+⚠️ **Privacy Note**: The debug ID is purely for troubleshooting. Users who clear it expect complete anonymity.
 
 ## 🏗️ Extension Architecture
 

@@ -3,6 +3,7 @@ package dev.lefley.coorganizer;
 import burp.api.montoya.BurpExtension;
 import burp.api.montoya.MontoyaApi;
 import dev.lefley.coorganizer.handler.SharedItemDownloadResponseHandler;
+import dev.lefley.coorganizer.service.DebugIdManager;
 import dev.lefley.coorganizer.ui.ShareContextMenuProvider;
 import dev.lefley.coorganizer.ui.GroupTab;
 
@@ -37,6 +38,7 @@ public class Extension implements BurpExtension {
         api.extension().setName(EXTENSION_NAME);
         api.logging().logToOutput(EXTENSION_NAME + " extension initializing...");
 
+        initializeDebugId();
         registerContextMenuProvider();
         registerProxyResponseHandler();
         registerGroupTab();
@@ -54,6 +56,11 @@ public class Extension implements BurpExtension {
         SharedItemDownloadResponseHandler responseHandler = new SharedItemDownloadResponseHandler(api);
         api.proxy().registerResponseHandler(responseHandler);
         api.logging().logToOutput("Proxy response handler registered successfully");
+    }
+    
+    private void initializeDebugId() {
+        DebugIdManager debugIdManager = new DebugIdManager(api);
+        api.logging().logToOutput("Debug ID manager initialized");
     }
     
     private void registerGroupTab() {
