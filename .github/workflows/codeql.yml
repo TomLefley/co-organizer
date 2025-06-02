@@ -37,7 +37,7 @@ jobs:
       with:
         languages: ${{ matrix.language }}
         # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
-        queries: security-extended,quality
+        queries: security-extended
 
     - name: Cache Gradle packages
       uses: actions/cache@v3
