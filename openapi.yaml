@@ -217,10 +217,6 @@ components:
           type: string
           description: Human-readable error message
           example: "Invalid request format"
-        code:
-          type: string
-          description: Machine-readable error code
-          example: "INVALID_FORMAT"
 
   examples:
     UnencryptedData:
