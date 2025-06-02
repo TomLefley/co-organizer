@@ -19,7 +19,7 @@ import java.util.List;
 public class ShareService {
     private static final String STORE_HOST = "localhost";
     private static final int STORE_PORT = 3000;
-    private static final String STORE_PATH = "/store";
+    private static final String STORE_PATH = "/share";
     
     private final MontoyaApi api;
     private final HttpRequestResponseSerializer serializer;
@@ -131,12 +131,12 @@ public class ShareService {
     }
     
     private String createMultipartFormData(String boundary, String encodedData) {
-        api.logging().logToOutput("Creating multipart form data for file 'shareditem' with base64 encoded content");
+        api.logging().logToOutput("Creating multipart form data for file 'rr' with base64 encoded content");
         
         StringBuilder multipart = new StringBuilder();
         
         multipart.append("--").append(boundary).append("\r\n");
-        multipart.append("Content-Disposition: form-data; name=\"shareditem\"; filename=\"shareditem\"\r\n");
+        multipart.append("Content-Disposition: form-data; name=\"rr\"; filename=\"rr\"\r\n");
         multipart.append("Content-Type: application/octet-stream\r\n");
         multipart.append("Content-Transfer-Encoding: base64\r\n");
         multipart.append("\r\n");

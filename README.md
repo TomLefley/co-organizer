@@ -148,7 +148,7 @@ Imported items appear in **Organizer > Co-Organizer** with:
 
 Co-Organizer requires a local sharing server. You can use any server that:
 
-- **Accepts POST** requests to `/store`
+- **Accepts POST** requests to `/share`
 - **Returns JSON** with `{"url": "download-link"}`
 - **Serves downloads** with Base64-encoded data
 
@@ -169,7 +169,7 @@ Co-Organizer requires a local sharing server. You can use any server that:
 const express = require('express');
 const app = express();
 
-app.post('/store', (req, res) => {
+app.post('/share', (req, res) => {
   const id = generateId();
   storeData(id, req.body);
   res.json({ url: `http://localhost:3000/${id}/import` });
@@ -189,7 +189,7 @@ app.listen(3000);
 
 **❌ "Share failed: No response from server"**
 - ✅ Check server is running on `localhost:3000`
-- ✅ Verify `/store` endpoint accepts POST requests
+- ✅ Verify `/share` endpoint accepts POST requests
 - ✅ Check firewall settings
 
 **❌ Items not importing automatically**
