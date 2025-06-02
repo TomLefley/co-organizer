@@ -3,15 +3,18 @@ package dev.lefley.coorganizer.service;
 import burp.api.montoya.MontoyaApi;
 import dev.lefley.coorganizer.ui.components.BurpIcon;
 import dev.lefley.coorganizer.ui.components.BurpIconFile;
+import dev.lefley.coorganizer.util.Logger;
 
 import javax.swing.*;
 import java.awt.*;
 
 public class NotificationService {
     private final MontoyaApi api;
+    private final Logger logger;
     
     public NotificationService(MontoyaApi api) {
         this.api = api;
+        this.logger = new Logger(api, NotificationService.class);
     }
     
     public void showSuccessToast(String message) {
@@ -23,14 +26,14 @@ public class NotificationService {
     }
     
     private void showToast(String message, ToastType type) {
-        api.logging().logToOutput("Showing toast notification: " + message);
+        logger.debug("Showing toast notification: " + message);
         
         SwingUtilities.invokeLater(() -> {
             try {
                 Window parentWindow = findBurpWindow();
                 createToastWindow(message, type, parentWindow);
             } catch (Exception e) {
-                api.logging().logToError("Failed to show toast notification: " + e.getMessage());
+                logger.error("Failed to show toast notification: " + e.getMessage());
             }
         });
     }

@@ -7,6 +7,7 @@ import com.google.gson.reflect.TypeToken;
 import dev.lefley.coorganizer.crypto.CryptoUtils;
 import dev.lefley.coorganizer.model.Group;
 import dev.lefley.coorganizer.model.GroupInvite;
+import dev.lefley.coorganizer.util.Logger;
 
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
@@ -22,12 +23,14 @@ public class GroupManager {
     private static final String INVITE_MESSAGE_PREFIX = "Join my Co-Organizer group so that we can start sharing findings today! ";
     
     private final MontoyaApi api;
+    private final Logger logger;
     private final Gson gson;
     private final List<Group> groups;
     private final List<GroupManagerListener> listeners;
     
     public GroupManager(MontoyaApi api) {
         this.api = api;
+        this.logger = new Logger(api, GroupManager.class);
         this.gson = new Gson();
         this.groups = new CopyOnWriteArrayList<>();
         this.listeners = new CopyOnWriteArrayList<>();
@@ -49,7 +52,7 @@ public class GroupManager {
     }
     
     public Group createGroup(String name) {
-        api.logging().logToOutput("Creating new group: " + name);
+        logger.debug("Creating new group: " + name);
         
         String symmetricKey = CryptoUtils.generateSymmetricKey();
         String fingerprint = CryptoUtils.generateFingerprint(name, symmetricKey);
@@ -58,22 +61,24 @@ public class GroupManager {
         groups.add(group);
         saveGroupsToPreferences();
         
-        api.logging().logToOutput("Created group '" + name + "' with fingerprint: " + fingerprint);
+        logger.info("Created group '" + name + "' with fingerprint: " + fingerprint);
         
         notifyGroupAdded(group);
         return group;
     }
     
     public Group joinGroup(String inviteInput) throws InvalidInviteException {
-        api.logging().logToOutput("Attempting to join group with invite input");
+        logger.debug("Attempting to join group with invite input");
         
         try {
             // Extract invite code from input (handle both raw code and formatted message)
             String inviteCode = extractInviteCode(inviteInput);
+            logger.trace("Extracted invite code from input");
             
             // Decode base64 invite code
             byte[] decodedBytes = Base64.getDecoder().decode(inviteCode);
             String jsonString = new String(decodedBytes);
+            logger.trace("Decoded base64 invite code");
             
             // Parse JSON to GroupInvite
             GroupInvite invite = gson.fromJson(jsonString, GroupInvite.class);
@@ -81,6 +86,7 @@ public class GroupManager {
             if (invite.getName() == null || invite.getKey() == null || invite.getFingerprint() == null) {
                 throw new InvalidInviteException("The group invite was malformed.");
             }
+            logger.trace("Validated invite structure");
             
             // Create group from invite
             Group group = invite.toGroup();
@@ -89,10 +95,11 @@ public class GroupManager {
             if (groups.contains(group)) {
                 throw new InvalidInviteException("You are already a member of this group.");
             }
+            logger.trace("Verified group is not already joined");
             
             groups.add(group);
             saveGroupsToPreferences();
-            api.logging().logToOutput("Joined group '" + group.getName() + "' with fingerprint: " + group.getFingerprint());
+            logger.info("Joined group '" + group.getName() + "' with fingerprint: " + group.getFingerprint());
             
             notifyGroupAdded(group);
             return group;
@@ -105,25 +112,25 @@ public class GroupManager {
     }
     
     public void leaveGroup(Group group) {
-        api.logging().logToOutput("Leaving group: " + group.getName());
+        logger.debug("Leaving group: " + group.getName());
         
         if (groups.remove(group)) {
             saveGroupsToPreferences();
-            api.logging().logToOutput("Left group '" + group.getName() + "'");
+            logger.info("Left group '" + group.getName() + "'");
             notifyGroupRemoved(group);
         } else {
-            api.logging().logToError("Group not found: " + group.getName());
+            logger.error("Group not found: " + group.getName());
         }
     }
     
     public String generateInviteCode(Group group) {
-        api.logging().logToOutput("Generating invite code for group: " + group.getName());
+        logger.debug("Generating invite code for group: " + group.getName());
         
         GroupInvite invite = new GroupInvite(group.getName(), group.getSymmetricKey(), group.getFingerprint());
         String jsonString = gson.toJson(invite);
         String base64Code = Base64.getEncoder().encodeToString(jsonString.getBytes());
         
-        api.logging().logToOutput("Generated invite code for group '" + group.getName() + "'");
+        logger.debug("Generated invite code for group '" + group.getName() + "'");
         return base64Code;
     }
     
@@ -136,9 +143,9 @@ public class GroupManager {
             StringSelection selection = new StringSelection(inviteMessage);
             clipboard.setContents(selection, null);
             
-            api.logging().logToOutput("Copied invite message to clipboard for group: " + group.getName());
+            logger.info("Copied invite message to clipboard for group: " + group.getName());
         } catch (Exception e) {
-            api.logging().logToError("Failed to copy invite message to clipboard: " + e.getMessage());
+            logger.error("Failed to copy invite message to clipboard: " + e.getMessage());
         }
     }
     
@@ -153,7 +160,7 @@ public class GroupManager {
     public void refreshGroupsFromPreferences() {
         groups.clear();
         loadGroupsFromPreferences();
-        api.logging().logToOutput("Refreshed groups from preferences. Current group count: " + groups.size());
+        logger.debug("Refreshed groups from preferences. Current group count: " + groups.size());
     }
     
     public void moveGroup(int fromIndex, int toIndex) {
@@ -161,7 +168,7 @@ public class GroupManager {
             Group group = groups.remove(fromIndex);
             groups.add(toIndex, group);
             saveGroupsToPreferences();
-            api.logging().logToOutput("Moved group '" + group.getName() + "' from position " + fromIndex + " to " + toIndex);
+            logger.debug("Moved group '" + group.getName() + "' from position " + fromIndex + " to " + toIndex);
         }
     }
     
@@ -191,50 +198,54 @@ public class GroupManager {
     }
     
     private void notifyGroupAdded(Group group) {
+        logger.trace("Notifying listeners of group addition: " + group.getName());
         for (GroupManagerListener listener : listeners) {
             try {
                 listener.onGroupAdded(group);
             } catch (Exception e) {
-                api.logging().logToError("Error notifying listener of group addition: " + e.getMessage());
+                logger.error("Error notifying listener of group addition: " + e.getMessage());
             }
         }
     }
     
     private void notifyGroupRemoved(Group group) {
+        logger.trace("Notifying listeners of group removal: " + group.getName());
         for (GroupManagerListener listener : listeners) {
             try {
                 listener.onGroupRemoved(group);
             } catch (Exception e) {
-                api.logging().logToError("Error notifying listener of group removal: " + e.getMessage());
+                logger.error("Error notifying listener of group removal: " + e.getMessage());
             }
         }
     }
     
     private void loadGroupsFromPreferences() {
         try {
+            logger.trace("Loading groups from preferences");
             String groupsJson = api.persistence().preferences().getString(PREFERENCES_KEY_GROUPS);
             if (groupsJson != null && !groupsJson.trim().isEmpty()) {
                 Type listType = new TypeToken<List<Group>>(){}.getType();
                 List<Group> savedGroups = gson.fromJson(groupsJson, listType);
                 if (savedGroups != null) {
                     groups.addAll(savedGroups);
-                    api.logging().logToOutput("Loaded " + savedGroups.size() + " groups from preferences");
+                    logger.debug("Loaded " + savedGroups.size() + " groups from preferences");
                 }
             } else {
-                api.logging().logToOutput("No saved groups found in preferences");
+                logger.debug("No saved groups found in preferences");
             }
         } catch (Exception e) {
-            api.logging().logToError("Failed to load groups from preferences: " + e.getMessage());
+            logger.error("Failed to load groups from preferences: " + e.getMessage());
         }
     }
     
     private void saveGroupsToPreferences() {
         try {
+            logger.trace("Saving groups to preferences");
             String groupsJson = gson.toJson(groups);
             api.persistence().preferences().setString(PREFERENCES_KEY_GROUPS, groupsJson);
-            api.logging().logToOutput("Saved " + groups.size() + " groups to preferences");
+            logger.debug("Saved " + groups.size() + " groups to preferences");
         } catch (Exception e) {
-            api.logging().logToError("Failed to save groups to preferences: " + e.getMessage());
+            logger.error("Failed to save groups to preferences: " + e.getMessage());
         }
     }
     

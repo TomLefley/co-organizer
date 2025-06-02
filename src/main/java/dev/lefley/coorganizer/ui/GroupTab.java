@@ -9,6 +9,7 @@ import dev.lefley.coorganizer.ui.components.BurpIconFile;
 import dev.lefley.coorganizer.ui.components.SimpleIconButton;
 import dev.lefley.coorganizer.ui.dialog.CreateGroupDialog;
 import dev.lefley.coorganizer.ui.dialog.JoinGroupDialog;
+import dev.lefley.coorganizer.util.Logger;
 
 import javax.swing.*;
 import javax.swing.table.AbstractTableModel;
@@ -21,6 +22,7 @@ public class GroupTab extends JPanel implements GroupManager.GroupManagerListene
     private final MontoyaApi api;
     private final GroupManager groupManager;
     private final NotificationService notificationService;
+    private final Logger logger;
     
     private JTable groupTable;
     private GroupTableModel tableModel;
@@ -35,6 +37,7 @@ public class GroupTab extends JPanel implements GroupManager.GroupManagerListene
         this.api = api;
         this.groupManager = new GroupManager(api);
         this.notificationService = new NotificationService(api);
+        this.logger = new Logger(api, GroupTab.class);
         
         initializeComponents();
         layoutComponents();
@@ -43,7 +46,7 @@ public class GroupTab extends JPanel implements GroupManager.GroupManagerListene
         // Register as listener for group changes
         groupManager.addListener(this);
         
-        api.logging().logToOutput("Group tab initialized");
+        logger.debug("Group tab initialized");
     }
     
     private void initializeComponents() {
@@ -151,11 +154,11 @@ public class GroupTab extends JPanel implements GroupManager.GroupManagerListene
             try {
                 Group group = groupManager.createGroup(groupName);
                 notificationService.showSuccessToast("Created group '" + groupName + "'");
-                api.logging().logToOutput("Successfully created group: " + groupName);
+                logger.info("Successfully created group: " + groupName);
             } catch (Exception e) {
                 String errorMsg = "Failed to create group: " + e.getMessage();
                 notificationService.showErrorToast(errorMsg);
-                api.logging().logToError(errorMsg);
+                logger.error(errorMsg);
             }
         }
     }
@@ -167,16 +170,16 @@ public class GroupTab extends JPanel implements GroupManager.GroupManagerListene
             try {
                 Group group = groupManager.joinGroup(inviteCode);
                 notificationService.showSuccessToast("Joined group '" + group.getName() + "'");
-                api.logging().logToOutput("Successfully joined group: " + group.getName());
+                logger.info("Successfully joined group: " + group.getName());
             } catch (GroupManager.InvalidInviteException e) {
                 notificationService.showErrorToast(e.getMessage());
-                api.logging().logToError("Failed to join group: " + e.getMessage());
+                logger.error("Failed to join group: " + e.getMessage());
                 
                 JOptionPane.showMessageDialog(this, e.getMessage(), "Failed to join group", JOptionPane.ERROR_MESSAGE);
             } catch (Exception e) {
                 String errorMsg = "Failed to join group: " + e.getMessage();
                 notificationService.showErrorToast(errorMsg);
-                api.logging().logToError(errorMsg);
+                logger.error(errorMsg);
             }
         }
     }
@@ -185,11 +188,11 @@ public class GroupTab extends JPanel implements GroupManager.GroupManagerListene
         try {
             groupManager.copyInviteToClipboard(group);
             notificationService.showSuccessToast("Copied invite code for '" + group.getName() + "'");
-            api.logging().logToOutput("Copied invite code for group: " + group.getName());
+            logger.info("Copied invite code for group: " + group.getName());
         } catch (Exception e) {
             String errorMsg = "Failed to copy invite code: " + e.getMessage();
             notificationService.showErrorToast(errorMsg);
-            api.logging().logToError(errorMsg);
+            logger.error(errorMsg);
         }
     }
     
@@ -206,11 +209,11 @@ public class GroupTab extends JPanel implements GroupManager.GroupManagerListene
             try {
                 groupManager.leaveGroup(group);
                 notificationService.showSuccessToast("Left group '" + group.getName() + "'");
-                api.logging().logToOutput("Successfully left group: " + group.getName());
+                logger.info("Successfully left group: " + group.getName());
             } catch (Exception e) {
                 String errorMsg = "Failed to leave group: " + e.getMessage();
                 notificationService.showErrorToast(errorMsg);
-                api.logging().logToError(errorMsg);
+                logger.error(errorMsg);
             }
         }
     }
@@ -261,6 +264,7 @@ public class GroupTab extends JPanel implements GroupManager.GroupManagerListene
     @Override
     public void onGroupAdded(Group group) {
         SwingUtilities.invokeLater(() -> {
+            logger.trace("Updating UI after group added: " + group.getName());
             tableModel.fireTableDataChanged();
             updateButtonStates();
         });
@@ -269,6 +273,7 @@ public class GroupTab extends JPanel implements GroupManager.GroupManagerListene
     @Override
     public void onGroupRemoved(Group group) {
         SwingUtilities.invokeLater(() -> {
+            logger.trace("Updating UI after group removed: " + group.getName());
             tableModel.fireTableDataChanged();
             updateButtonStates();
         });

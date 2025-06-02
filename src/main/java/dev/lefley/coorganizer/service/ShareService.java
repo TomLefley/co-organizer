@@ -7,6 +7,7 @@ import burp.api.montoya.http.message.requests.HttpRequest;
 import dev.lefley.coorganizer.crypto.CryptoUtils;
 import dev.lefley.coorganizer.model.Group;
 import dev.lefley.coorganizer.serialization.HttpRequestResponseSerializer;
+import dev.lefley.coorganizer.util.Logger;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
@@ -25,12 +26,14 @@ public class ShareService {
     private final HttpRequestResponseSerializer serializer;
     private final NotificationService notificationService;
     private final Gson gson;
+    private final Logger logger;
     
     public ShareService(MontoyaApi api) {
         this.api = api;
         this.serializer = new HttpRequestResponseSerializer(api);
         this.notificationService = new NotificationService(api);
         this.gson = new Gson();
+        this.logger = new Logger(api, ShareService.class);
     }
     
     public void shareItems(List<HttpRequestResponse> selectedItems) {
@@ -38,12 +41,12 @@ public class ShareService {
     }
     
     public void shareItems(List<HttpRequestResponse> selectedItems, Group group) {
-        api.logging().logToOutput("Starting shareSelectedItems with " + selectedItems.size() + " items" + 
-            (group != null ? " for group: " + group.getName() : " (no group)"));
+        logger.info("Starting share operation with " + selectedItems.size() + " items" + 
+            (group != null ? " for group: " + group.getName() : " (unencrypted)"));
         
         try {
             String jsonData = serializer.serialize(selectedItems);
-            api.logging().logToOutput("JSON serialization complete. Data length: " + jsonData.length());
+            logger.debug("JSON serialization complete. Data length: " + jsonData.length());
             
             // Create the outer JSON structure
             JsonObject outerJson = new JsonObject();
@@ -53,50 +56,49 @@ public class ShareService {
                 String encryptedData = CryptoUtils.encrypt(jsonData, group.getSymmetricKey());
                 outerJson.addProperty("fingerprint", group.getFingerprint());
                 outerJson.addProperty("data", encryptedData);
-                api.logging().logToOutput("Data encrypted for group: " + group.getName());
+                logger.debug("Data encrypted for group: " + group.getName());
             } else {
                 // No encryption, just wrap in outer JSON
                 outerJson.addProperty("data", jsonData);
-                api.logging().logToOutput("Data not encrypted (no group specified)");
+                logger.debug("Data not encrypted (no group specified)");
             }
             
             String finalJsonData = gson.toJson(outerJson);
-            api.logging().logToOutput("Final JSON structure created. Length: " + finalJsonData.length());
+            logger.debug("Final JSON structure created. Length: " + finalJsonData.length());
             
             String url = uploadToStore(finalJsonData);
             
             if (url != null) {
                 copyToClipboard(url);
-                api.logging().logToOutput("URL copied to clipboard: " + url);
+                logger.info("Share successful - URL copied to clipboard: " + url);
                 String message = group != null ? 
                     "Sharing link copied to clipboard! (encrypted for " + group.getName() + ")" :
                     "Sharing link copied to clipboard!";
                 notificationService.showSuccessToast(message);
             } else {
-                api.logging().logToError("Failed to extract URL from response");
+                logger.error("Failed to extract URL from response");
                 notificationService.showErrorToast("Share failed: could not extract link from response");
             }
             
         } catch (Exception e) {
-            api.logging().logToError("Error sharing items: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            logger.error("Error sharing items", e);
             notificationService.showErrorToast("Share failed: " + e.getClass().getSimpleName());
-            e.printStackTrace();
         }
     }
     
     private String uploadToStore(String jsonData) {
-        api.logging().logToOutput("Creating HTTP request to: " + STORE_HOST + ":" + STORE_PORT + STORE_PATH);
+        logger.debug("Creating HTTP request to: " + STORE_HOST + ":" + STORE_PORT + STORE_PATH);
         
         HttpService httpService = HttpService.httpService(STORE_HOST, STORE_PORT, false);
         
         String encodedJsonData = Base64.getEncoder().encodeToString(jsonData.getBytes());
-        api.logging().logToOutput("Base64 encoded JSON data (original: " + jsonData.length() + " bytes, encoded: " + encodedJsonData.length() + " chars)");
+        logger.debug("Base64 encoded JSON data (original: " + jsonData.length() + " bytes, encoded: " + encodedJsonData.length() + " chars)");
         
         String boundary = "----WebKitFormBoundary" + System.currentTimeMillis();
         String multipartBody = createMultipartFormData(boundary, encodedJsonData);
         
-        api.logging().logToOutput("Created multipart form data with boundary: " + boundary);
-        api.logging().logToOutput("Multipart body length: " + multipartBody.length());
+        logger.debug("Created multipart form data with boundary: " + boundary);
+        logger.trace("Multipart body length: " + multipartBody.length());
         
         HttpRequest request = HttpRequest.httpRequest()
                 .withMethod("POST")
@@ -106,24 +108,24 @@ public class ShareService {
                 .withBody(multipartBody)
                 .withService(httpService);
         
-        api.logging().logToOutput("Sending HTTP request using Montoya network stack...");
+        logger.debug("Sending HTTP request using Montoya network stack...");
         HttpRequestResponse response = api.http().sendRequest(request);
         
         if (response.response() != null) {
             int statusCode = response.response().statusCode();
             String responseBodyStr = response.response().bodyToString();
             
-            api.logging().logToOutput("HTTP response received. Status code: " + statusCode);
-            api.logging().logToOutput("Response body: " + responseBodyStr);
+            logger.debug("HTTP response received. Status code: " + statusCode);
+            logger.trace("Response body: " + responseBodyStr);
             
             if (statusCode == 200) {
                 return extractUrlFromResponse(responseBodyStr);
             } else {
-                api.logging().logToError("HTTP request failed. Status: " + statusCode + ", Body: " + responseBodyStr);
+                logger.error("HTTP request failed. Status: " + statusCode + ", Body: " + responseBodyStr);
                 notificationService.showErrorToast("Share failed: HTTP " + statusCode);
             }
         } else {
-            api.logging().logToError("No response received from HTTP request");
+            logger.error("No response received from HTTP request");
             notificationService.showErrorToast("Share failed: No response from server");
         }
         
@@ -131,7 +133,7 @@ public class ShareService {
     }
     
     private String createMultipartFormData(String boundary, String encodedData) {
-        api.logging().logToOutput("Creating multipart form data for file 'rr' with base64 encoded content");
+        logger.trace("Creating multipart form data for file 'rr' with base64 encoded content");
         
         StringBuilder multipart = new StringBuilder();
         
@@ -144,45 +146,45 @@ public class ShareService {
         multipart.append("\r\n");
         multipart.append("--").append(boundary).append("--\r\n");
         
-        api.logging().logToOutput("Multipart form data created successfully with base64 encoding");
+        logger.trace("Multipart form data created successfully with base64 encoding");
         return multipart.toString();
     }
     
     private String extractUrlFromResponse(String responseBody) {
-        api.logging().logToOutput("Extracting URL from response body (length: " + responseBody.length() + ")");
+        logger.debug("Extracting URL from response body (length: " + responseBody.length() + ")");
         
         if (responseBody.contains("\"url\"")) {
-            api.logging().logToOutput("Found 'url' property in response");
+            logger.trace("Found 'url' property in response");
             int urlStart = responseBody.indexOf("\"url\":");
             if (urlStart != -1) {
-                api.logging().logToOutput("Found 'url' key at position: " + urlStart);
+                logger.trace("Found 'url' key at position: " + urlStart);
                 urlStart = responseBody.indexOf("\"", urlStart + 6) + 1;
                 int urlEnd = responseBody.indexOf("\"", urlStart);
                 if (urlEnd != -1) {
                     String extractedUrl = responseBody.substring(urlStart, urlEnd);
-                    api.logging().logToOutput("Successfully extracted URL: " + extractedUrl);
+                    logger.debug("Successfully extracted URL: " + extractedUrl);
                     return extractedUrl;
                 } else {
-                    api.logging().logToError("Could not find end quote for URL value");
+                    logger.error("Could not find end quote for URL value");
                 }
             } else {
-                api.logging().logToError("Could not find 'url' key in response");
+                logger.error("Could not find 'url' key in response");
             }
         } else {
-            api.logging().logToError("Response does not contain 'url' property");
+            logger.error("Response does not contain 'url' property");
         }
         return null;
     }
     
     private void copyToClipboard(String text) {
-        api.logging().logToOutput("Copying text to clipboard: " + text);
+        logger.debug("Copying text to clipboard: " + text);
         try {
             Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
             StringSelection selection = new StringSelection(text);
             clipboard.setContents(selection, null);
-            api.logging().logToOutput("Successfully copied to clipboard");
+            logger.debug("Successfully copied to clipboard");
         } catch (Exception e) {
-            api.logging().logToError("Failed to copy to clipboard: " + e.getMessage());
+            logger.error("Failed to copy to clipboard: " + e.getMessage());
         }
     }
 }

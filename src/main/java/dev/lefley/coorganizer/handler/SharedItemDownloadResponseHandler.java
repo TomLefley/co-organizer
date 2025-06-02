@@ -12,6 +12,7 @@ import dev.lefley.coorganizer.matcher.SharedItemDownloadMatcher;
 import dev.lefley.coorganizer.model.Group;
 import dev.lefley.coorganizer.serialization.HttpRequestResponseSerializer;
 import dev.lefley.coorganizer.service.GroupManager;
+import dev.lefley.coorganizer.util.Logger;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
@@ -28,6 +29,7 @@ public class SharedItemDownloadResponseHandler implements ProxyResponseHandler {
     private final HttpRequestResponseSerializer serializer;
     private final GroupManager groupManager;
     private final Gson gson;
+    private final Logger logger;
     
     public SharedItemDownloadResponseHandler(MontoyaApi api) {
         this.api = api;
@@ -35,34 +37,35 @@ public class SharedItemDownloadResponseHandler implements ProxyResponseHandler {
         this.serializer = new HttpRequestResponseSerializer(api);
         this.groupManager = new GroupManager(api);
         this.gson = new Gson();
+        this.logger = new Logger(api, SharedItemDownloadResponseHandler.class);
     }
     
     @Override
     public ProxyResponseReceivedAction handleResponseReceived(InterceptedResponse interceptedResponse) {
         String url = interceptedResponse.initiatingRequest().url();
-        api.logging().logToOutput("Proxy intercepted response from URL: " + url);
+        logger.debug("Proxy intercepted response from URL: " + url);
         
         if (matcher.matches(interceptedResponse)) {
-            api.logging().logToOutput("Response matches shared item download pattern, processing...");
+            logger.info("Response matches shared item import pattern, processing...");
             
             // Check if user has access to decrypt the data
             ProcessResult result = processDownload(interceptedResponse);
             
             if (result == ProcessResult.UNAUTHORIZED) {
-                api.logging().logToOutput("User does not have access to this group, setting status code to 401");
+                logger.info("User does not have access to this group, returning 401 Unauthorized");
                 HttpResponse unauthorizedResponse = interceptedResponse.withBody("Unauthorized").withStatusCode(UNAUTHORIZED_STATUS_CODE);
                 return ProxyResponseReceivedAction.doNotIntercept(unauthorizedResponse);
             } else if (result == ProcessResult.SUCCESS) {
-                api.logging().logToOutput("Successfully processed shared items, setting status code to 201");
+                logger.info("Successfully processed shared items, returning 201 Success");
                 HttpResponse modifiedResponse = interceptedResponse.withBody(IMPORTED_MESSAGE).withStatusCode(SUCCESS_STATUS_CODE);
                 return ProxyResponseReceivedAction.doNotIntercept(modifiedResponse);
             } else {
-                api.logging().logToError("Failed to process shared items, continuing with original response");
+                logger.error("Failed to process shared items, continuing with original response");
                 return ProxyResponseReceivedAction.continueWith(interceptedResponse);
             }
             
         } else {
-            api.logging().logToOutput("Response does not match shared item download pattern, continuing");
+            logger.trace("Response does not match shared item import pattern, continuing");
             return ProxyResponseReceivedAction.continueWith(interceptedResponse);
         }
     }
@@ -79,7 +82,7 @@ public class SharedItemDownloadResponseHandler implements ProxyResponseHandler {
     private ProcessResult processDownload(InterceptedResponse interceptedResponse) {
         try {
             String responseBody = interceptedResponse.bodyToString();
-            api.logging().logToOutput("Response body length: " + responseBody.length());
+            logger.debug("Response body length: " + responseBody.length());
             
             String outerJsonData = decodeBase64Response(responseBody);
             if (outerJsonData == null) {
@@ -95,7 +98,7 @@ public class SharedItemDownloadResponseHandler implements ProxyResponseHandler {
                 String fingerprint = outerJson.get("fingerprint").getAsString();
                 String encryptedData = outerJson.get("data").getAsString();
                 
-                api.logging().logToOutput("Found encrypted data for fingerprint: " + fingerprint);
+                logger.debug("Found encrypted data for fingerprint: " + fingerprint);
                 
                 // Refresh groups to ensure we have the latest data (in case user left a group)
                 groupManager.refreshGroupsFromPreferences();
@@ -103,18 +106,18 @@ public class SharedItemDownloadResponseHandler implements ProxyResponseHandler {
                 // Find the group with this fingerprint
                 Group group = findGroupByFingerprint(fingerprint);
                 if (group == null) {
-                    api.logging().logToOutput("User does not have access to group with fingerprint: " + fingerprint);
+                    logger.info("User does not have access to group with fingerprint: " + fingerprint);
                     return ProcessResult.UNAUTHORIZED;
                 }
                 
                 // Decrypt the data
-                api.logging().logToOutput("Decrypting data using group: " + group.getName());
+                logger.debug("Decrypting data using group: " + group.getName());
                 actualData = CryptoUtils.decrypt(encryptedData, group.getSymmetricKey());
                 
             } else {
                 // Unencrypted data
                 actualData = outerJson.get("data").getAsString();
-                api.logging().logToOutput("Processing unencrypted shared data");
+                logger.debug("Processing unencrypted shared data");
             }
             
             // Deserialize and send to organizer
@@ -124,8 +127,7 @@ public class SharedItemDownloadResponseHandler implements ProxyResponseHandler {
             return ProcessResult.SUCCESS;
             
         } catch (Exception e) {
-            api.logging().logToError("Error processing shared item download: " + e.getClass().getSimpleName() + " - " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Error processing shared item download", e);
             return ProcessResult.ERROR;
         }
     }
@@ -141,30 +143,30 @@ public class SharedItemDownloadResponseHandler implements ProxyResponseHandler {
         try {
             byte[] decodedBytes = Base64.getDecoder().decode(responseBody);
             String decodedJsonData = new String(decodedBytes);
-            api.logging().logToOutput("Successfully decoded base64 response (decoded length: " + decodedJsonData.length() + ")");
+            logger.debug("Successfully decoded base64 response (decoded length: " + decodedJsonData.length() + ")");
             return decodedJsonData;
         } catch (IllegalArgumentException e) {
-            api.logging().logToError("Failed to decode base64 response: " + e.getMessage());
+            logger.error("Failed to decode base64 response: " + e.getMessage());
             return null;
         }
     }
     
     private void sendToOrganizer(List<HttpRequestResponse> items) {
-        api.logging().logToOutput("Sending " + items.size() + " items to organizer");
+        logger.info("Sending " + items.size() + " items to organizer");
         
         int successCount = 0;
         for (int i = 0; i < items.size(); i++) {
             try {
                 HttpRequestResponse item = items.get(i);
-                api.logging().logToOutput("Sending item " + (i + 1) + "/" + items.size() + " to organizer");
+                logger.trace("Sending item " + (i + 1) + "/" + items.size() + " to organizer");
                 api.organizer().sendToOrganizer(item);
                 successCount++;
-                api.logging().logToOutput("Successfully sent item " + (i + 1) + " to organizer");
+                logger.trace("Successfully sent item " + (i + 1) + " to organizer");
             } catch (Exception e) {
-                api.logging().logToError("Failed to send item " + (i + 1) + " to organizer: " + e.getMessage());
+                logger.error("Failed to send item " + (i + 1) + " to organizer: " + e.getMessage());
             }
         }
         
-        api.logging().logToOutput("Successfully sent " + successCount + "/" + items.size() + " items to organizer");
+        logger.info("Successfully sent " + successCount + "/" + items.size() + " items to organizer");
     }
 }
