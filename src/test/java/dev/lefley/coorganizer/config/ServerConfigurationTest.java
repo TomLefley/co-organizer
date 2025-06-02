@@ -38,7 +38,9 @@ class ServerConfigurationTest {
     void shouldPreventInstantiation() {
         assertThatThrownBy(() -> {
             // Use reflection to try to instantiate the utility class
-            ServerConfiguration.class.getDeclaredConstructor().newInstance();
+            var constructor = ServerConfiguration.class.getDeclaredConstructor();
+            constructor.setAccessible(true);
+            constructor.newInstance();
         }).hasCauseInstanceOf(UnsupportedOperationException.class);
     }
 

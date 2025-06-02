@@ -3,6 +3,8 @@ package dev.lefley.coorganizer.service;
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.logging.Logging;
+import burp.api.montoya.persistence.Persistence;
+import burp.api.montoya.persistence.Preferences;
 import dev.lefley.coorganizer.model.Group;
 import dev.lefley.coorganizer.serialization.HttpRequestResponseSerializer;
 import com.google.gson.Gson;
@@ -32,6 +34,12 @@ class ShareServiceTest {
     private Logging logging;
     
     @Mock
+    private Persistence persistence;
+    
+    @Mock
+    private Preferences preferences;
+    
+    @Mock
     private HttpRequestResponseSerializer serializer;
     
     @Mock
@@ -45,6 +53,9 @@ class ShareServiceTest {
         MockitoAnnotations.openMocks(this);
         
         when(api.logging()).thenReturn(logging);
+        when(api.persistence()).thenReturn(persistence);
+        when(persistence.preferences()).thenReturn(preferences);
+        when(preferences.getString("co-organizer.debug-id")).thenReturn("test-debug-id");
         
         shareService = new ShareService(api);
         gson = new Gson();

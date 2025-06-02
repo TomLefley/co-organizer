@@ -104,23 +104,27 @@ public class ShareService {
         logger.debug("Created multipart form data with boundary: " + boundary);
         logger.trace("Multipart body length: " + multipartBody.length());
         
-        HttpRequest.Builder requestBuilder = HttpRequest.httpRequest()
-                .withMethod("POST")
-                .withPath(STORE_PATH)
-                .withHeader("Content-Type", "multipart/form-data; boundary=" + boundary)
-                .withHeader("Host", STORE_HOST + ":" + STORE_PORT);
-        
-        // Add debug ID header if enabled
+        HttpRequest request;
         if (debugIdManager.isDebugIdEnabled()) {
-            requestBuilder.withHeader("X-Debug-Id", debugIdManager.getDebugId());
+            request = HttpRequest.httpRequest()
+                    .withMethod("POST")
+                    .withPath(STORE_PATH)
+                    .withHeader("Content-Type", "multipart/form-data; boundary=" + boundary)
+                    .withHeader("Host", STORE_HOST + ":" + STORE_PORT)
+                    .withHeader("X-Debug-Id", debugIdManager.getDebugId())
+                    .withBody(multipartBody)
+                    .withService(httpService);
             logger.debug("Added debug ID header to request");
         } else {
+            request = HttpRequest.httpRequest()
+                    .withMethod("POST")
+                    .withPath(STORE_PATH)
+                    .withHeader("Content-Type", "multipart/form-data; boundary=" + boundary)
+                    .withHeader("Host", STORE_HOST + ":" + STORE_PORT)
+                    .withBody(multipartBody)
+                    .withService(httpService);
             logger.debug("Debug ID disabled - not adding header to request");
         }
-        
-        HttpRequest request = requestBuilder
-                .withBody(multipartBody)
-                .withService(httpService);
         
         logger.debug("Sending HTTP request using Montoya network stack...");
         HttpRequestResponse response = api.http().sendRequest(request);

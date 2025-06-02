@@ -82,7 +82,7 @@ class LoggerTest {
     @Test
     @DisplayName("Should format class names correctly")
     void shouldFormatClassNamesCorrectly() {
-        logger.debug("Test debug message");
+        logger.info("Test info message");
         
         verify(logging).logToOutput(contains("LoggerTest:"));
     }

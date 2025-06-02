@@ -2,7 +2,7 @@
 
 A Burp Suite extension that enables secure, group-based sharing of HTTP request/response items between security researchers and penetration testers with end-to-end encryption.
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](build.gradle.kts)
+[![Build Status](https://github.com/TomLefley/co-organizer/actions/workflows/ci.yml/badge.svg)](https://github.com/TomLefley/co-organizer/actions/workflows/ci.yml)
 [![Java Version](https://img.shields.io/badge/java-21-blue)](build.gradle.kts)
 [![License](https://img.shields.io/badge/license-GPL--3-blue)](LICENSE)
 
