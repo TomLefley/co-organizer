@@ -4,6 +4,7 @@ import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.http.HttpService;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.http.message.requests.HttpRequest;
+import dev.lefley.coorganizer.config.ServerConfiguration;
 import dev.lefley.coorganizer.crypto.CryptoUtils;
 import dev.lefley.coorganizer.model.Group;
 import dev.lefley.coorganizer.serialization.HttpRequestResponseSerializer;
@@ -18,9 +19,10 @@ import java.util.Base64;
 import java.util.List;
 
 public class ShareService {
-    private static final String STORE_HOST = "localhost";
-    private static final int STORE_PORT = 3000;
-    private static final String STORE_PATH = "/share";
+    // Server configuration - see ServerConfiguration class to change server address
+    private static final String STORE_HOST = ServerConfiguration.HOST;
+    private static final int STORE_PORT = ServerConfiguration.PORT;
+    private static final String STORE_PATH = ServerConfiguration.SHARE_ENDPOINT;
     
     private final MontoyaApi api;
     private final HttpRequestResponseSerializer serializer;

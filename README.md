@@ -153,6 +153,20 @@ Co-Organizer requires a local sharing server. You can use any server that:
 - **Returns JSON** with `{"url": "download-link"}`
 - **Serves downloads** with Base64-encoded data
 
+### 🔧 Custom Server Address
+
+By default, Co-Organizer connects to `http://localhost:3000`. To use a different server:
+
+1. **Fork the repository**
+2. **Edit `ServerConfiguration.java`**:
+   ```java
+   public static final String HOST = "your-server.com";  // Change this
+   public static final int PORT = 8080;                  // Change this
+   ```
+3. **Rebuild the extension**: `./gradlew jar`
+
+This single change updates all server connections throughout the extension.
+
 ### Example Server URLs
 ```
 ✅ http://localhost:3000/abc123/import
@@ -313,6 +327,18 @@ cd co-organizer
 ./gradlew test  # Run tests
 ./gradlew jar   # Build extension
 ```
+
+### Custom Server Configuration
+
+To develop with a different server address:
+
+1. **Edit server configuration** in `src/main/java/dev/lefley/coorganizer/config/ServerConfiguration.java`
+2. **Update constants** as needed:
+   - `HOST` - Server hostname or IP
+   - `PORT` - Server port number
+   - `SHARE_ENDPOINT` - Upload endpoint path
+   - `IMPORT_ENDPOINT_SUFFIX` - Download endpoint suffix
+3. **Rebuild and test**: `./gradlew clean test jar`
 
 ### Contributing
 We welcome contributions! See [Contributing Guidelines](CONTRIBUTING.md) for:

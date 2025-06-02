@@ -5,6 +5,7 @@ import burp.api.montoya.http.message.responses.HttpResponse;
 import burp.api.montoya.proxy.http.InterceptedResponse;
 import burp.api.montoya.proxy.http.ProxyResponseReceivedAction;
 import burp.api.montoya.logging.Logging;
+import dev.lefley.coorganizer.config.ServerConfiguration;
 import dev.lefley.coorganizer.crypto.CryptoUtils;
 import dev.lefley.coorganizer.matcher.SharedItemDownloadMatcher;
 import dev.lefley.coorganizer.model.Group;
@@ -60,7 +61,7 @@ class SharedItemDownloadResponseHandlerTest {
         
         when(api.logging()).thenReturn(logging);
         when(interceptedResponse.initiatingRequest()).thenReturn(httpRequest);
-        when(httpRequest.url()).thenReturn("http://localhost:3000/download");
+        when(httpRequest.url()).thenReturn(ServerConfiguration.BASE_URL + "/test");
         
         handler = new SharedItemDownloadResponseHandler(api);
         gson = new Gson();
