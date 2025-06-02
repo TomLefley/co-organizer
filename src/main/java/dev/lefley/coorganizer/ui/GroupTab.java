@@ -281,7 +281,7 @@ public class GroupTab extends JPanel implements GroupManager.GroupManagerListene
     
     // Table model for groups
     private class GroupTableModel extends AbstractTableModel {
-        private final String[] columnNames = {"Group name", "Created at"};
+        private final String[] columnNames = {"Group name", "Added at"};
         
         @Override
         public int getRowCount() {
