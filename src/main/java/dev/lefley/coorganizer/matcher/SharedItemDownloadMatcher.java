@@ -7,7 +7,7 @@ import burp.api.montoya.proxy.http.InterceptedResponse;
 public class SharedItemDownloadMatcher {
     private static final String TARGET_HOST = "localhost";
     private static final int TARGET_PORT = 3000;
-    private static final String TARGET_PATH_SUFFIX = "/download";
+    private static final String TARGET_PATH_SUFFIX = "/import";
     
     private final MontoyaApi api;
     

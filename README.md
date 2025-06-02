@@ -154,11 +154,11 @@ Co-Organizer requires a local sharing server. You can use any server that:
 
 ### Example Server URLs
 ```
-✅ http://localhost:3000/abc123/download
-✅ http://localhost:3000/items/xyz789/download  
-✅ http://localhost:3000/share/def456/download
-❌ http://example.com:3000/download (wrong host)
-❌ http://localhost:8080/download (wrong port)
+✅ http://localhost:3000/abc123/import
+✅ http://localhost:3000/items/xyz789/import  
+✅ http://localhost:3000/share/def456/import
+❌ http://example.com:3000/import (wrong host)
+❌ http://localhost:8080/import (wrong port)
 ❌ http://localhost:3000/upload (wrong endpoint)
 ```
 
@@ -172,10 +172,10 @@ const app = express();
 app.post('/store', (req, res) => {
   const id = generateId();
   storeData(id, req.body);
-  res.json({ url: `http://localhost:3000/${id}/download` });
+  res.json({ url: `http://localhost:3000/${id}/import` });
 });
 
-app.get('/:id/download', (req, res) => {
+app.get('/:id/import', (req, res) => {
   const data = getData(req.params.id);
   res.send(data);
 });
@@ -194,7 +194,7 @@ app.listen(3000);
 
 **❌ Items not importing automatically**
 - ✅ Ensure Burp proxy is active
-- ✅ Check URL format: `localhost:3000/*/download`
+- ✅ Check URL format: `localhost:3000/*/import`
 - ✅ Verify response contains Base64 data
 
 **❌ "Failed to decode base64 response"**
@@ -205,7 +205,7 @@ app.listen(3000);
 
 Enable detailed logging in **Extensions > Co-Organizer > Output**:
 ```
-✅ "Response matches shared item download pattern"
+✅ "Response matches shared item import pattern"
 ✅ "Successfully decoded base64 response"  
 ✅ "Successfully sent X items to organizer"
 ```
