@@ -61,6 +61,7 @@ Perfect for:
 - [Sharing & Encryption](#sharing--encryption)
 - [Detailed Usage](#detailed-usage)
 - [Server Setup](#server-setup)
+- [API Specification](#api-specification)
 - [Security Features](#security-features)
 - [Privacy & Debug ID](#privacy--debug-id)
 - [Troubleshooting](#troubleshooting)
@@ -152,6 +153,16 @@ Co-Organizer requires a local sharing server. You can use any server that:
 - **Accepts POST** requests to `/share`
 - **Returns JSON** with `{"url": "download-link"}`
 - **Serves downloads** with Base64-encoded data
+
+### 📋 API Specification
+
+See [`openapi.yaml`](openapi.yaml) for the complete API specification. This documents:
+- Exact request/response formats
+- Required headers and status codes  
+- Data schemas for encrypted vs unencrypted sharing
+- Example requests and responses
+
+Use the OpenAPI spec to generate server stubs in your preferred language or validate your implementation.
 
 ### 🔧 Custom Server Address
 
