@@ -64,5 +64,39 @@ class HttpRequestResponseDataTest {
         // Then
         assertThat(data.request).isSameAs(requestData);
         assertThat(data.response).isSameAs(responseData);
+        assertThat(data.annotations).isNull(); // Backwards compatibility constructor
+    }
+
+    @Test
+    @DisplayName("should create instance with annotations")
+    void shouldCreateInstanceWithAnnotations() {
+        // Given
+        HttpRequestData requestData = new HttpRequestData("GET", "https://example.com", "headers", "body");
+        HttpResponseData responseData = new HttpResponseData("200", "response-headers", "response-body");
+        AnnotationData annotationData = new AnnotationData("notes", "highlightColor", true, true);
+
+        // When
+        HttpRequestResponseData data = new HttpRequestResponseData(requestData, responseData, annotationData);
+
+        // Then
+        assertThat(data.request).isEqualTo(requestData);
+        assertThat(data.response).isEqualTo(responseData);
+        assertThat(data.annotations).isEqualTo(annotationData);
+    }
+
+    @Test
+    @DisplayName("should handle null annotations")
+    void shouldHandleNullAnnotations() {
+        // Given
+        HttpRequestData requestData = new HttpRequestData("GET", "https://example.com", "headers", "body");
+        HttpResponseData responseData = new HttpResponseData("200", "response-headers", "response-body");
+
+        // When
+        HttpRequestResponseData data = new HttpRequestResponseData(requestData, responseData, null);
+
+        // Then
+        assertThat(data.request).isEqualTo(requestData);
+        assertThat(data.response).isEqualTo(responseData);
+        assertThat(data.annotations).isNull();
     }
 }

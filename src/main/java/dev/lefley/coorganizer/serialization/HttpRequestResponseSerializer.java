@@ -1,11 +1,14 @@
 package dev.lefley.coorganizer.serialization;
 
 import burp.api.montoya.MontoyaApi;
+import burp.api.montoya.core.Annotations;
+import burp.api.montoya.core.HighlightColor;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import dev.lefley.coorganizer.model.AnnotationData;
 import dev.lefley.coorganizer.model.HttpRequestData;
 import dev.lefley.coorganizer.model.HttpRequestResponseData;
 import dev.lefley.coorganizer.model.HttpResponseData;
@@ -35,8 +38,9 @@ public class HttpRequestResponseSerializer {
             
             HttpRequestData requestData = serializeRequest(item, i + 1);
             HttpResponseData responseData = serializeResponse(item, i + 1);
+            AnnotationData annotationData = serializeAnnotations(item, i + 1);
             
-            dataItems.add(new HttpRequestResponseData(requestData, responseData));
+            dataItems.add(new HttpRequestResponseData(requestData, responseData, annotationData));
         }
         
         String json = gson.toJson(dataItems);
@@ -115,6 +119,51 @@ public class HttpRequestResponseSerializer {
         }
     }
     
+    private AnnotationData serializeAnnotations(HttpRequestResponse item, int itemNumber) {
+        api.logging().logToOutput("Serializing annotations for item " + itemNumber);
+        
+        try {
+            // Get annotations from the item
+            String notes = "";
+            String highlightColor = "";
+            boolean hasNotes = false;
+            boolean hasHighlightColor = false;
+            
+            if (item.annotations() != null) {
+                // Check if the item has notes
+                if (item.annotations().hasNotes()) {
+                    notes = item.annotations().notes();
+                    hasNotes = true;
+                    api.logging().logToOutput("Item " + itemNumber + " has notes: " + notes.length() + " characters");
+                }
+                
+                // Check if the item has highlight color
+                if (item.annotations().hasHighlightColor()) {
+                    highlightColor = item.annotations().highlightColor().toString();
+                    hasHighlightColor = true;
+                    api.logging().logToOutput("Item " + itemNumber + " has highlight color: " + highlightColor);
+                }
+            }
+            
+            return new AnnotationData(
+                Base64.getEncoder().encodeToString(notes.getBytes()),
+                Base64.getEncoder().encodeToString(highlightColor.getBytes()),
+                hasNotes,
+                hasHighlightColor
+            );
+            
+        } catch (Exception e) {
+            api.logging().logToError("Error serializing annotations for item " + itemNumber + ": " + e.getMessage());
+            // Return empty annotation data on error
+            return new AnnotationData(
+                Base64.getEncoder().encodeToString("".getBytes()),
+                Base64.getEncoder().encodeToString("".getBytes()),
+                false,
+                false
+            );
+        }
+    }
+    
     private HttpRequestResponse deserializeItem(HttpRequestResponseData dataItem, int itemNumber) {
         HttpRequestData requestData = dataItem.request;
         if (requestData == null) {
@@ -136,7 +185,22 @@ public class HttpRequestResponseSerializer {
             
             HttpResponse response = deserializeResponse(dataItem.response, itemNumber);
             
-            HttpRequestResponse item = HttpRequestResponse.httpRequestResponse(request, response);
+            // Create annotations from deserialized data
+            Annotations annotations = null;
+            if (dataItem.annotations != null) {
+                annotations = createAnnotations(dataItem.annotations, itemNumber);
+            }
+            
+            // Create HttpRequestResponse with annotations using the three-parameter factory method
+            HttpRequestResponse item;
+            if (annotations != null) {
+                item = HttpRequestResponse.httpRequestResponse(request, response, annotations);
+                api.logging().logToOutput("Created HttpRequestResponse with restored annotations for object " + itemNumber);
+            } else {
+                item = HttpRequestResponse.httpRequestResponse(request, response);
+                api.logging().logToOutput("Created HttpRequestResponse without annotations for object " + itemNumber);
+            }
+            
             api.logging().logToOutput("Successfully created HttpRequestResponse with " + (response != null ? "response" : "request only") + " for object " + itemNumber);
             return item;
             
@@ -171,5 +235,46 @@ public class HttpRequestResponseSerializer {
         }
         
         return null;
+    }
+    
+    private Annotations createAnnotations(AnnotationData annotationData, int itemNumber) {
+        try {
+            if (annotationData.hasNotes || annotationData.hasHighlightColor) {
+                api.logging().logToOutput("Creating annotations for item " + itemNumber);
+                
+                String notes = "";
+                HighlightColor highlightColor = null;
+                
+                if (annotationData.hasNotes) {
+                    notes = new String(Base64.getDecoder().decode(annotationData.notes));
+                    api.logging().logToOutput("Item " + itemNumber + " restoring notes: " + notes.length() + " characters");
+                }
+                
+                if (annotationData.hasHighlightColor) {
+                    String colorName = new String(Base64.getDecoder().decode(annotationData.highlightColor));
+                    try {
+                        highlightColor = HighlightColor.valueOf(colorName);
+                        api.logging().logToOutput("Item " + itemNumber + " restoring highlight color: " + colorName);
+                    } catch (IllegalArgumentException e) {
+                        api.logging().logToError("Invalid highlight color: " + colorName + " for item " + itemNumber);
+                    }
+                }
+                
+                // Create annotations using the Montoya API factory method
+                if (annotationData.hasNotes && annotationData.hasHighlightColor && highlightColor != null) {
+                    return Annotations.annotations(notes, highlightColor);
+                } else if (annotationData.hasNotes) {
+                    return Annotations.annotations(notes);
+                } else if (annotationData.hasHighlightColor && highlightColor != null) {
+                    return Annotations.annotations(highlightColor);
+                }
+            }
+            
+            return null; // No annotations to create
+            
+        } catch (Exception e) {
+            api.logging().logToError("Error creating annotations for item " + itemNumber + ": " + e.getMessage());
+            return null;
+        }
     }
 }
