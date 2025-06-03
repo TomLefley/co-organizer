@@ -23,8 +23,8 @@ Perfect for:
 ## ✨ Key Features
 
 ### 🚀 Flexible Sharing Options
-- **Right-click any HTTP item** → "Share" for public sharing
-- **"Share with..."** submenu → Select specific groups for encrypted sharing
+- **Share items with public links** that anyone can import
+- **Share items with private links** that only specific groups can import
 - **Automatic link generation** and clipboard copy
 
 ### 👥 Group Management
@@ -80,8 +80,8 @@ cd co-organizer
 
 ### 1. Share an HTTP Item
 
-1. **Select one or more request-responses** in HTTP history
-2. **Right-click** → **Extensions** → **Co-Organizer** → "Share" (or "Share with..." → [desired group])
+1. **Select one or more request/responses** in HTTP history
+2. **Right-click** → **Extensions** → **Co-Organizer** → "Share" (or "Share with..." → [Group Name])
 3. **Link copied** to clipboard automatically
 4. **Send link** to colleague
 
@@ -94,14 +94,18 @@ cd co-organizer
 ## 👥 Group Management
 
 ### Creating Groups
-1. **Extensions** → **Co-Organizer** → **Manage Groups**
-2. **Create Group** → Enter group name
+1. **Co-Organizer Groups tab** → **Toolbar (top right)** → "Create a new collaboration group"
+2. **Enter group name**
 3. **Generate invite code** to share with team members
 
 ### Joining Groups
-1. Obtain **invite code** from group creator
-2. **Extensions** → **Co-Organizer** → **Join Group**
-3. **Paste invite code** → Group appears in sharing menu
+1. **Obtain invite code** from group creator
+2. **Co-Organizer Groups tab** → **Toolbar (top right)** → "Join an existing group using an invite code"
+3. **Paste full invite or base64 invite code** → Group appears in table
+
+### Leaving Groups
+1. **Co-Organizer Groups tab** → **Select group in table**
+2. **Toolbar** → "Leave selected group"
 
 ### Sharing with Groups
 - **Right-click HTTP item** → **Extensions** → **Co-Organizer** → **Share with...** → **[Group Name]**
@@ -113,7 +117,7 @@ cd co-organizer
 ### Encryption
 - **All items shared with groups** are end-to-end encrypted using AES-256-GCM
 - **Unique encryption keys per group** with cryptographic isolation
-- **All items publicly shared** are encrypted at rest by the PortSwigger Co-Organizer server
+- **All items publicly shared** are encrypted at rest when using the PortSwigger Co-Organizer server
 
 ### Data Retention
 - **PortSwigger Co-Organizer server** retains data for a maximum of **7 days**
@@ -137,14 +141,12 @@ For enhanced privacy, you can host your own sharing server:
 **Note**: The PortSwigger Co-Organizer server decorates the import endpoint flow to make it more aesthetically pleasing, but the OpenAPI definition outlines the basic requirements for compatibility.
 
 ### Debug ID Privacy
-Co-Organizer includes an optional debug system for troubleshooting:
+Co-Organizer includes a debug ID header for troubleshooting:
 
 - **Automatic Generation**: A unique UUID is generated on first startup
 - **Optional Transmission**: Sent as `X-Debug-Id` header only in sharing requests
-- **Privacy Control**: Users can disable by clearing the `co-organizer.debug-id` preference
+- **Privacy Control**: Users can disable by setting the `co-organizer.debug-id` preference to empty
 - **No Regeneration**: Once cleared, stays cleared until manually regenerated
-
-**For privacy-conscious users**: Clear the debug ID in Burp's preference system to ensure complete anonymity.
 
 ## 🤝 Contributing
 
@@ -160,12 +162,6 @@ We welcome contributions to Co-Organizer!
 ## 📄 License
 
 GPL-3 License - see [LICENSE](LICENSE) for details.
-
-## 🙏 Acknowledgments
-
-- **PortSwigger** for the excellent Burp Suite platform
-- **Security research community** for inspiring collaborative tools
-- **Contributors** who help make Co-Organizer better
 
 ---
 
