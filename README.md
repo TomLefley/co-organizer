@@ -140,14 +140,6 @@ For enhanced privacy, you can host your own sharing server:
 
 **Note**: The PortSwigger Co-Organizer server decorates the import endpoint flow to make it more aesthetically pleasing, but the OpenAPI definition outlines the basic requirements for compatibility.
 
-### Debug ID Privacy
-Co-Organizer includes a debug ID header for troubleshooting:
-
-- **Automatic Generation**: A unique UUID is generated on first startup
-- **Optional Transmission**: Sent as `X-Debug-Id` header only in sharing requests
-- **Privacy Control**: Users can disable by setting the `co-organizer.debug-id` preference to empty
-- **No Regeneration**: Once cleared, stays cleared until manually regenerated
-
 ## 🤝 Contributing
 
 We welcome contributions to Co-Organizer! 

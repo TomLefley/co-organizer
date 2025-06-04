@@ -55,7 +55,6 @@ class ShareServiceTest {
         when(api.logging()).thenReturn(logging);
         when(api.persistence()).thenReturn(persistence);
         when(persistence.preferences()).thenReturn(preferences);
-        when(preferences.getString("co-organizer.debug-id")).thenReturn("test-debug-id");
         
         shareService = new ShareService(api);
         gson = new Gson();
