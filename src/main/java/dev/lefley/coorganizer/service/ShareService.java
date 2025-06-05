@@ -2,6 +2,7 @@ package dev.lefley.coorganizer.service;
 
 import burp.api.montoya.MontoyaApi;
 import burp.api.montoya.http.HttpService;
+import burp.api.montoya.http.RequestOptions;
 import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import dev.lefley.coorganizer.config.ServerConfiguration;
@@ -110,8 +111,9 @@ public class ShareService {
                 .withBody(multipartBody)
                 .withService(httpService);
         
-        logger.debug("Sending HTTP request using Montoya network stack...");
-        HttpRequestResponse response = api.http().sendRequest(request);
+        logger.debug("Sending HTTP request using Montoya network stack with upstream TLS verification...");
+        RequestOptions requestOptions = RequestOptions.requestOptions().withUpstreamTLSVerification();
+        HttpRequestResponse response = api.http().sendRequest(request, requestOptions);
         
         if (response.response() != null) {
             int statusCode = response.response().statusCode();
