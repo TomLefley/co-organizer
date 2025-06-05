@@ -7,11 +7,10 @@ import burp.api.montoya.http.message.HttpRequestResponse;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.http.message.responses.HttpResponse;
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
-import dev.lefley.coorganizer.model.AnnotationData;
-import dev.lefley.coorganizer.model.HttpRequestData;
-import dev.lefley.coorganizer.model.HttpRequestResponseData;
-import dev.lefley.coorganizer.model.HttpResponseData;
 import dev.lefley.coorganizer.util.Logger;
 
 import java.lang.reflect.Type;
@@ -31,224 +30,188 @@ public class HttpRequestResponseSerializer {
     }
     
     public String serialize(List<HttpRequestResponse> items) {
-        List<HttpRequestResponseData> dataItems = new ArrayList<>();
+        logger.debug("Serializing " + items.size() + " HTTP request/response items");
+        
+        JsonArray itemsArray = new JsonArray();
         
         for (int i = 0; i < items.size(); i++) {
             HttpRequestResponse item = items.get(i);
+            if (item == null) {
+                logger.error("Item " + i + " is null, skipping");
+                continue;
+            }
             
-            HttpRequestData requestData = serializeRequest(item, i + 1);
-            HttpResponseData responseData = serializeResponse(item, i + 1);
-            AnnotationData annotationData = serializeAnnotations(item, i + 1);
+            JsonObject itemJson = new JsonObject();
             
-            dataItems.add(new HttpRequestResponseData(requestData, responseData, annotationData));
+            // Serialize request
+            if (item.request() != null) {
+                try {
+                    String requestString = item.request().toString();
+                    if (requestString != null) {
+                        String encodedRequest = Base64.getEncoder().encodeToString(requestString.getBytes());
+                        itemJson.addProperty("request", encodedRequest);
+                    }
+                } catch (Exception e) {
+                    logger.error("Failed to serialize request for item " + i + ": " + e.getMessage());
+                }
+            }
+            
+            // Serialize response
+            if (item.response() != null) {
+                try {
+                    String responseString = item.response().toString();
+                    if (responseString != null) {
+                        String encodedResponse = Base64.getEncoder().encodeToString(responseString.getBytes());
+                        itemJson.addProperty("response", encodedResponse);
+                    }
+                } catch (Exception e) {
+                    logger.error("Failed to serialize response for item " + i + ": " + e.getMessage());
+                }
+            }
+            
+            // Serialize annotations
+            if (item.annotations() != null) {
+                try {
+                    JsonObject annotationsJson = new JsonObject();
+                    
+                    if (item.annotations().hasNotes()) {
+                        String notes = item.annotations().notes();
+                        if (notes != null) {
+                            String encodedNotes = Base64.getEncoder().encodeToString(notes.getBytes());
+                            annotationsJson.addProperty("notes", encodedNotes);
+                        }
+                    }
+                    
+                    if (item.annotations().hasHighlightColor()) {
+                        HighlightColor color = item.annotations().highlightColor();
+                        if (color != null) {
+                            annotationsJson.addProperty("highlightColor", color.toString());
+                        }
+                    }
+                    
+                    if (annotationsJson.size() > 0) {
+                        itemJson.add("annotations", annotationsJson);
+                    }
+                } catch (Exception e) {
+                    logger.error("Failed to serialize annotations for item " + i + ": " + e.getMessage());
+                }
+            }
+            
+            if (itemJson.size() > 0) {
+                itemsArray.add(itemJson);
+            }
         }
         
-        String json = gson.toJson(dataItems);
-        return json;
+        JsonObject rootJson = new JsonObject();
+        rootJson.add("items", itemsArray);
+        
+        String result = gson.toJson(rootJson);
+        logger.debug("Successfully serialized " + itemsArray.size() + " items");
+        return result;
     }
     
     public List<HttpRequestResponse> deserialize(String jsonData) {
+        logger.debug("Deserializing HTTP request/response items from JSON data");
+        
         List<HttpRequestResponse> items = new ArrayList<>();
         
         try {
-            Type listType = new TypeToken<List<HttpRequestResponseData>>(){}.getType();
-            List<HttpRequestResponseData> dataItems = gson.fromJson(jsonData, listType);
+            JsonObject rootJson = gson.fromJson(jsonData, JsonObject.class);
+            if (!rootJson.has("items")) {
+                logger.error("JSON data missing 'items' array");
+                return items;
+            }
             
+            JsonArray itemsArray = rootJson.getAsJsonArray("items");
             
-            for (int i = 0; i < dataItems.size(); i++) {
-                HttpRequestResponseData dataItem = dataItems.get(i);
-                
-                HttpRequestResponse item = deserializeItem(dataItem, i + 1);
-                if (item != null) {
-                    items.add(item);
+            for (int i = 0; i < itemsArray.size(); i++) {
+                try {
+                    JsonObject itemJson = itemsArray.get(i).getAsJsonObject();
+                    HttpRequestResponse item = deserializeItem(itemJson, i);
+                    if (item != null) {
+                        items.add(item);
+                    }
+                } catch (Exception e) {
+                    logger.error("Failed to deserialize item " + i + ": " + e.getMessage());
                 }
             }
+            
+        } catch (JsonSyntaxException e) {
+            logger.error("Failed to parse JSON data: " + e.getMessage());
         } catch (Exception e) {
-            logger.error("Error deserializing HTTP items with Gson", e);
+            logger.error("Unexpected error during deserialization: " + e.getMessage());
         }
         
+        logger.debug("Successfully deserialized " + items.size() + " items");
         return items;
     }
     
-    private HttpRequestData serializeRequest(HttpRequestResponse item, int itemNumber) {
-        String method = item.request().method();
-        String url = item.request().url();
+    private HttpRequestResponse deserializeItem(JsonObject itemJson, int itemNumber) {
+        HttpRequest request = deserializeRequest(itemJson, itemNumber);
+        HttpResponse response = deserializeResponse(itemJson, itemNumber);
+        Annotations annotations = deserializeAnnotations(itemJson, itemNumber);
         
-        String requestHeaders = item.request().toString().split("\\r\\n\\r\\n")[0];
-        byte[] requestBodyBytes = item.request().body().getBytes();
-        
-        return new HttpRequestData(
-            Base64.getEncoder().encodeToString(method.getBytes()),
-            Base64.getEncoder().encodeToString(url.getBytes()),
-            Base64.getEncoder().encodeToString(requestHeaders.getBytes()),
-            Base64.getEncoder().encodeToString(requestBodyBytes)
-        );
-    }
-    
-    private HttpResponseData serializeResponse(HttpRequestResponse item, int itemNumber) {
-        if (item.response() != null) {
-            int statusCode = item.response().statusCode();
-            
-            String responseHeaders = item.response().headers().toString();
-            byte[] responseBodyBytes = item.response().body().getBytes();
-            
-            return new HttpResponseData(
-                Base64.getEncoder().encodeToString(String.valueOf(statusCode).getBytes()),
-                Base64.getEncoder().encodeToString(responseHeaders.getBytes()),
-                Base64.getEncoder().encodeToString(responseBodyBytes)
-            );
+        if (request != null) {
+            return HttpRequestResponse.httpRequestResponse(request, response, annotations);
         } else {
-            return new HttpResponseData(
-                Base64.getEncoder().encodeToString("0".getBytes()),
-                Base64.getEncoder().encodeToString("".getBytes()),
-                Base64.getEncoder().encodeToString("".getBytes())
-            );
-        }
-    }
-    
-    private AnnotationData serializeAnnotations(HttpRequestResponse item, int itemNumber) {
-        
-        try {
-            // Get annotations from the item
-            String notes = "";
-            String highlightColor = "";
-            boolean hasNotes = false;
-            boolean hasHighlightColor = false;
-            
-            if (item.annotations() != null) {
-                // Check if the item has notes
-                if (item.annotations().hasNotes()) {
-                    notes = item.annotations().notes();
-                    hasNotes = true;
-                }
-                
-                // Check if the item has highlight color
-                if (item.annotations().hasHighlightColor()) {
-                    highlightColor = item.annotations().highlightColor().toString();
-                    hasHighlightColor = true;
-                }
-            }
-            
-            return new AnnotationData(
-                Base64.getEncoder().encodeToString(notes.getBytes()),
-                Base64.getEncoder().encodeToString(highlightColor.getBytes()),
-                hasNotes,
-                hasHighlightColor
-            );
-            
-        } catch (Exception e) {
-            logger.error("Error serializing annotations for item " + itemNumber, e);
-            // Return empty annotation data on error
-            return new AnnotationData(
-                Base64.getEncoder().encodeToString("".getBytes()),
-                Base64.getEncoder().encodeToString("".getBytes()),
-                false,
-                false
-            );
-        }
-    }
-    
-    private HttpRequestResponse deserializeItem(HttpRequestResponseData dataItem, int itemNumber) {
-        HttpRequestData requestData = dataItem.request;
-        if (requestData == null) {
-            logger.error("No request data found for object " + itemNumber);
-            return null;
-        }
-        
-        try {
-            String requestUrl = new String(Base64.getDecoder().decode(requestData.url));
-            String requestMethod = new String(Base64.getDecoder().decode(requestData.method));
-            String requestHeaders = new String(Base64.getDecoder().decode(requestData.headers));
-            byte[] requestBody = Base64.getDecoder().decode(requestData.body);
-            
-            
-            HttpRequest request = HttpRequest.httpRequestFromUrl(requestUrl)
-                .withMethod(requestMethod)
-                .withBody(new String(requestBody));
-            
-            HttpResponse response = deserializeResponse(dataItem.response, itemNumber);
-            
-            // Create annotations from deserialized data
-            Annotations annotations = null;
-            if (dataItem.annotations != null) {
-                annotations = createAnnotations(dataItem.annotations, itemNumber);
-            }
-            
-            // Create HttpRequestResponse with annotations using the three-parameter factory method
-            HttpRequestResponse item;
-            if (annotations != null) {
-                item = HttpRequestResponse.httpRequestResponse(request, response, annotations);
-            } else {
-                item = HttpRequestResponse.httpRequestResponse(request, response);
-            }
-            
-            return item;
-            
-        } catch (Exception e) {
-            logger.error("Failed to decode request data for object " + itemNumber, e);
+            logger.error("Item " + itemNumber + " has no valid request, skipping");
             return null;
         }
     }
     
-    private HttpResponse deserializeResponse(HttpResponseData responseData, int itemNumber) {
-        if (responseData == null) {
-            return null;
-        }
-        
-        try {
-            String statusCodeStr = new String(Base64.getDecoder().decode(responseData.statusCode));
-            String responseHeaders = new String(Base64.getDecoder().decode(responseData.headers));
-            byte[] responseBody = Base64.getDecoder().decode(responseData.body);
-            
-            int statusCode = Integer.parseInt(statusCodeStr);
-            
-            if (statusCode > 0) {
-                String responseString = "HTTP/1.1 " + statusCode + " OK\r\n" + responseHeaders + "\r\n\r\n" + new String(responseBody);
-                HttpResponse response = HttpResponse.httpResponse(responseString);
-                return response;
+    private HttpRequest deserializeRequest(JsonObject itemJson, int itemNumber) {
+        if (itemJson.has("request")) {
+            try {
+                String encodedRequest = itemJson.get("request").getAsString();
+                String requestString = new String(Base64.getDecoder().decode(encodedRequest));
+                return HttpRequest.httpRequest(requestString);
+            } catch (Exception e) {
+                logger.error("Failed to deserialize request for item " + itemNumber + ": " + e.getMessage());
             }
-        } catch (Exception e) {
-            logger.error("Failed to decode response data for object " + itemNumber, e);
         }
-        
         return null;
     }
     
-    private Annotations createAnnotations(AnnotationData annotationData, int itemNumber) {
-        try {
-            if (annotationData.hasNotes || annotationData.hasHighlightColor) {
+    private HttpResponse deserializeResponse(JsonObject itemJson, int itemNumber) {
+        if (itemJson.has("response")) {
+            try {
+                String encodedResponse = itemJson.get("response").getAsString();
+                String responseString = new String(Base64.getDecoder().decode(encodedResponse));
+                return HttpResponse.httpResponse(responseString);
+            } catch (Exception e) {
+                logger.error("Failed to deserialize response for item " + itemNumber + ": " + e.getMessage());
+            }
+        }
+        return null;
+    }
+    
+    private Annotations deserializeAnnotations(JsonObject itemJson, int itemNumber) {
+        if (itemJson.has("annotations")) {
+            try {
+                JsonObject annotationsJson = itemJson.getAsJsonObject("annotations");
+                Annotations annotations = Annotations.annotations();
                 
-                String notes = "";
-                HighlightColor highlightColor = null;
-                
-                if (annotationData.hasNotes) {
-                    notes = new String(Base64.getDecoder().decode(annotationData.notes));
+                if (annotationsJson.has("notes")) {
+                    String encodedNotes = annotationsJson.get("notes").getAsString();
+                    String notes = new String(Base64.getDecoder().decode(encodedNotes));
+                    annotations = annotations.withNotes(notes);
                 }
                 
-                if (annotationData.hasHighlightColor) {
-                    String colorName = new String(Base64.getDecoder().decode(annotationData.highlightColor));
+                if (annotationsJson.has("highlightColor")) {
+                    String colorString = annotationsJson.get("highlightColor").getAsString();
                     try {
-                        highlightColor = HighlightColor.valueOf(colorName);
+                        HighlightColor color = HighlightColor.valueOf(colorString);
+                        annotations = annotations.withHighlightColor(color);
                     } catch (IllegalArgumentException e) {
-                        logger.error("Invalid highlight color: " + colorName + " for item " + itemNumber);
+                        logger.error("Invalid highlight color: " + colorString);
                     }
                 }
                 
-                // Create annotations using the Montoya API factory method
-                if (annotationData.hasNotes && annotationData.hasHighlightColor && highlightColor != null) {
-                    return Annotations.annotations(notes, highlightColor);
-                } else if (annotationData.hasNotes) {
-                    return Annotations.annotations(notes);
-                } else if (annotationData.hasHighlightColor && highlightColor != null) {
-                    return Annotations.annotations(highlightColor);
-                }
+                return annotations;
+            } catch (Exception e) {
+                logger.error("Failed to deserialize annotations for item " + itemNumber + ": " + e.getMessage());
             }
-            
-            return null; // No annotations to create
-            
-        } catch (Exception e) {
-            logger.error("Error creating annotations for item " + itemNumber, e);
-            return null;
         }
+        return null;
     }
 }
