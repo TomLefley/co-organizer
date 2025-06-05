@@ -151,15 +151,22 @@ public class GroupTab extends JPanel implements GroupManager.GroupManagerListene
         String groupName = CreateGroupDialog.showDialog(SwingUtilities.getWindowAncestor(this));
         
         if (groupName != null) {
-            try {
-                Group group = groupManager.createGroup(groupName);
-                notificationService.showSuccessToast("Created group '" + groupName + "'");
-                logger.info("Successfully created group: " + groupName);
-            } catch (Exception e) {
-                String errorMsg = "Failed to create group: " + e.getMessage();
-                notificationService.showErrorToast(errorMsg);
-                logger.error(errorMsg);
-            }
+            // Run group creation in background thread to avoid blocking EDT
+            new Thread(() -> {
+                try {
+                    Group group = groupManager.createGroup(groupName);
+                    SwingUtilities.invokeLater(() -> {
+                        notificationService.showSuccessToast("Created group '" + groupName + "'");
+                        logger.info("Successfully created group: " + groupName);
+                    });
+                } catch (Exception e) {
+                    SwingUtilities.invokeLater(() -> {
+                        String errorMsg = "Failed to create group: " + e.getMessage();
+                        notificationService.showErrorToast(errorMsg);
+                        logger.error(errorMsg);
+                    });
+                }
+            }).start();
         }
     }
     
@@ -167,33 +174,49 @@ public class GroupTab extends JPanel implements GroupManager.GroupManagerListene
         String inviteCode = JoinGroupDialog.showDialog(SwingUtilities.getWindowAncestor(this));
         
         if (inviteCode != null) {
-            try {
-                Group group = groupManager.joinGroup(inviteCode);
-                notificationService.showSuccessToast("Joined group '" + group.getName() + "'");
-                logger.info("Successfully joined group: " + group.getName());
-            } catch (GroupManager.InvalidInviteException e) {
-                notificationService.showErrorToast(e.getMessage());
-                logger.error("Failed to join group: " + e.getMessage());
-                
-                JOptionPane.showMessageDialog(this, e.getMessage(), "Failed to join group", JOptionPane.ERROR_MESSAGE);
-            } catch (Exception e) {
-                String errorMsg = "Failed to join group: " + e.getMessage();
-                notificationService.showErrorToast(errorMsg);
-                logger.error(errorMsg);
-            }
+            // Run group joining in background thread to avoid blocking EDT
+            new Thread(() -> {
+                try {
+                    Group group = groupManager.joinGroup(inviteCode);
+                    SwingUtilities.invokeLater(() -> {
+                        notificationService.showSuccessToast("Joined group '" + group.getName() + "'");
+                        logger.info("Successfully joined group: " + group.getName());
+                    });
+                } catch (GroupManager.InvalidInviteException e) {
+                    SwingUtilities.invokeLater(() -> {
+                        notificationService.showErrorToast(e.getMessage());
+                        logger.error("Failed to join group: " + e.getMessage());
+                        
+                        JOptionPane.showMessageDialog(this, e.getMessage(), "Failed to join group", JOptionPane.ERROR_MESSAGE);
+                    });
+                } catch (Exception e) {
+                    SwingUtilities.invokeLater(() -> {
+                        String errorMsg = "Failed to join group: " + e.getMessage();
+                        notificationService.showErrorToast(errorMsg);
+                        logger.error(errorMsg);
+                    });
+                }
+            }).start();
         }
     }
     
     private void handleCopyInvite(Group group) {
-        try {
-            groupManager.copyInviteToClipboard(group);
-            notificationService.showSuccessToast("Copied invite code for '" + group.getName() + "'");
-            logger.info("Copied invite code for group: " + group.getName());
-        } catch (Exception e) {
-            String errorMsg = "Failed to copy invite code: " + e.getMessage();
-            notificationService.showErrorToast(errorMsg);
-            logger.error(errorMsg);
-        }
+        // Run clipboard operation in background thread to avoid blocking EDT
+        new Thread(() -> {
+            try {
+                groupManager.copyInviteToClipboard(group);
+                SwingUtilities.invokeLater(() -> {
+                    notificationService.showSuccessToast("Copied invite code for '" + group.getName() + "'");
+                    logger.info("Copied invite code for group: " + group.getName());
+                });
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> {
+                    String errorMsg = "Failed to copy invite code: " + e.getMessage();
+                    notificationService.showErrorToast(errorMsg);
+                    logger.error(errorMsg);
+                });
+            }
+        }).start();
     }
     
     private void handleLeaveGroup(Group group) {
