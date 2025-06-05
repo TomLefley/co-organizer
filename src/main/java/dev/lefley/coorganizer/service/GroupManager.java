@@ -183,7 +183,7 @@ public class GroupManager {
         logger.debug("Refreshed groups from preferences. Current group count: " + groups.size());
     }
     
-    public void moveGroup(int fromIndex, int toIndex) {
+    public synchronized void moveGroup(int fromIndex, int toIndex) {
         if (fromIndex >= 0 && fromIndex < groups.size() && toIndex >= 0 && toIndex < groups.size() && fromIndex != toIndex) {
             Group group = groups.remove(fromIndex);
             groups.add(toIndex, group);
