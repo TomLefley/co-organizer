@@ -8,10 +8,12 @@ import burp.api.montoya.http.message.requests.HttpRequest;
 import dev.lefley.coorganizer.config.ServerConfiguration;
 import dev.lefley.coorganizer.crypto.CryptoUtils;
 import dev.lefley.coorganizer.model.Group;
+import dev.lefley.coorganizer.model.ShareResponse;
 import dev.lefley.coorganizer.serialization.HttpRequestResponseSerializer;
 import dev.lefley.coorganizer.util.Logger;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonSyntaxException;
 
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
@@ -133,24 +135,27 @@ public class ShareService {
     }
     
     private String extractUrlFromResponse(String responseBody) {
-        if (responseBody.contains("\"url\"")) {
-            int urlStart = responseBody.indexOf("\"url\":");
-            if (urlStart != -1) {
-                urlStart = responseBody.indexOf("\"", urlStart + 6) + 1;
-                int urlEnd = responseBody.indexOf("\"", urlStart);
-                if (urlEnd != -1) {
-                    String extractedUrl = responseBody.substring(urlStart, urlEnd);
-                    return extractedUrl;
-                } else {
-                    logger.debug("Could not find end quote for URL value");
-                }
-            } else {
-                logger.debug("Could not find 'url' key in response");
+        try {
+            ShareResponse shareResponse = gson.fromJson(responseBody, ShareResponse.class);
+            
+            if (shareResponse.hasError()) {
+                logger.debug("Server returned error: " + shareResponse.getError());
+                return null;
             }
-        } else {
-            logger.debug("Response does not contain 'url' property");
+            
+            if (shareResponse.hasUrl()) {
+                return shareResponse.getUrl();
+            } else {
+                logger.debug("Response does not contain valid URL");
+                return null;
+            }
+        } catch (JsonSyntaxException e) {
+            logger.error("Failed to parse JSON response: " + responseBody, e);
+            return null;
+        } catch (Exception e) {
+            logger.error("Unexpected error parsing response", e);
+            return null;
         }
-        return null;
     }
     
     private void copyToClipboard(String text) {
