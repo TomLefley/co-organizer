@@ -46,6 +46,12 @@ public class ShareService {
     }
     
     public void shareItems(List<HttpRequestResponse> selectedItems, Group group) {
+        if (selectedItems == null || selectedItems.isEmpty()) {
+            logger.error("Cannot share empty or null item list");
+            notificationService.showErrorToast("Share failed: No items selected");
+            return;
+        }
+        
         try {
             String jsonData = serializer.serialize(selectedItems);
             
@@ -98,8 +104,17 @@ public class ShareService {
                 .withBody(multipartBody)
                 .withService(httpService);
         
-        RequestOptions requestOptions = RequestOptions.requestOptions().withUpstreamTLSVerification();
-        HttpRequestResponse response = api.http().sendRequest(request, requestOptions);
+        RequestOptions requestOptions = RequestOptions.requestOptions()
+                .withUpstreamTLSVerification();
+        
+        HttpRequestResponse response;
+        try {
+            response = api.http().sendRequest(request, requestOptions);
+        } catch (Exception e) {
+            logger.error("HTTP request failed due to network error", e);
+            notificationService.showErrorToast("Share failed: Network error");
+            return null;
+        }
         
         if (response.response() != null) {
             int statusCode = response.response().statusCode();
@@ -159,12 +174,25 @@ public class ShareService {
     }
     
     private void copyToClipboard(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            logger.error("Cannot copy null or empty text to clipboard");
+            return;
+        }
+        
         try {
             Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
             StringSelection selection = new StringSelection(text);
             clipboard.setContents(selection, null);
+            logger.debug("Successfully copied text to clipboard");
+        } catch (SecurityException e) {
+            logger.error("Permission denied accessing system clipboard", e);
+            notificationService.showErrorToast("Share failed: Cannot access clipboard");
+        } catch (IllegalStateException e) {
+            logger.error("System clipboard unavailable", e);
+            notificationService.showErrorToast("Share failed: Clipboard unavailable");
         } catch (Exception e) {
-            logger.error("Failed to copy to clipboard", e);
+            logger.error("Unexpected error copying to clipboard", e);
+            notificationService.showErrorToast("Share failed: Clipboard error");
         }
     }
 }
