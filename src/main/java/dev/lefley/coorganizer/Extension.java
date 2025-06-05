@@ -2,6 +2,7 @@ package dev.lefley.coorganizer;
 
 import burp.api.montoya.BurpExtension;
 import burp.api.montoya.MontoyaApi;
+import dev.lefley.coorganizer.crypto.CryptoUtils;
 import dev.lefley.coorganizer.handler.SharedItemDownloadResponseHandler;
 import dev.lefley.coorganizer.ui.ShareContextMenuProvider;
 import dev.lefley.coorganizer.ui.GroupTab;
@@ -36,6 +37,9 @@ public class Extension implements BurpExtension {
     public void initialize(MontoyaApi montoyaApi) {
         this.api = montoyaApi;
         this.logger = new Logger(api, Extension.class);
+        
+        // Initialize logger for CryptoUtils
+        CryptoUtils.initializeLogger(new Logger(api, CryptoUtils.class));
         
         api.extension().setName(EXTENSION_NAME);
         registerContextMenuProvider();

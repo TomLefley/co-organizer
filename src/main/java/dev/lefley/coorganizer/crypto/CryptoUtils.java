@@ -13,7 +13,7 @@ import java.util.Base64;
 
 public class CryptoUtils {
     
-    private static final Logger logger = new Logger(null, CryptoUtils.class);
+    private static Logger logger;
     
     private static final String AES_ALGORITHM = "AES";
     private static final String AES_TRANSFORMATION = "AES/GCM/NoPadding";
@@ -22,24 +22,55 @@ public class CryptoUtils {
     private static final int GCM_TAG_LENGTH = 16;
     private static final String HASH_ALGORITHM = "SHA-256";
     
+    public static void initializeLogger(Logger loggerInstance) {
+        logger = loggerInstance;
+    }
+    
+    private static void log(String level, String message) {
+        if (logger != null) {
+            switch (level) {
+                case "DEBUG":
+                    logger.debug(message);
+                    break;
+                case "ERROR":
+                    logger.error(message);
+                    break;
+                default:
+                    logger.info(message);
+            }
+        }
+    }
+    
+    private static void log(String level, String message, Throwable throwable) {
+        if (logger != null) {
+            switch (level) {
+                case "ERROR":
+                    logger.error(message, throwable);
+                    break;
+                default:
+                    logger.info(message);
+            }
+        }
+    }
+    
     public static String generateSymmetricKey() {
         try {
-            logger.debug("Generating new symmetric key");
+            log("DEBUG", "Generating new symmetric key");
             KeyGenerator keyGenerator = KeyGenerator.getInstance(AES_ALGORITHM);
             keyGenerator.init(AES_KEY_LENGTH);
             SecretKey secretKey = keyGenerator.generateKey();
             String encodedKey = Base64.getEncoder().encodeToString(secretKey.getEncoded());
-            logger.debug("Successfully generated symmetric key");
+            log("DEBUG", "Successfully generated symmetric key");
             return encodedKey;
         } catch (NoSuchAlgorithmException e) {
-            logger.error("Failed to generate symmetric key", e);
+            log("ERROR", "Failed to generate symmetric key", e);
             throw new RuntimeException("Failed to generate symmetric key", e);
         }
     }
     
     public static String generateFingerprint(String groupName, String symmetricKey) {
         try {
-            logger.debug("Generating fingerprint for group: " + groupName);
+            log("DEBUG", "Generating fingerprint for group: " + groupName);
             MessageDigest digest = MessageDigest.getInstance(HASH_ALGORITHM);
             String combined = groupName + ":" + symmetricKey;
             byte[] hash = digest.digest(combined.getBytes());
@@ -62,10 +93,10 @@ public class CryptoUtils {
                 fullHex.substring(8, 12),
                 fullHex.substring(12, 16)
             );
-            logger.debug("Successfully generated fingerprint: " + fingerprint);
+            log("DEBUG", "Successfully generated fingerprint: " + fingerprint);
             return fingerprint;
         } catch (NoSuchAlgorithmException e) {
-            logger.error("Failed to generate fingerprint for group: " + groupName, e);
+            log("ERROR", "Failed to generate fingerprint for group: " + groupName, e);
             throw new RuntimeException("Failed to generate fingerprint", e);
         }
     }
@@ -103,7 +134,7 @@ public class CryptoUtils {
             // Return base64 encoded result
             return Base64.getEncoder().encodeToString(encryptedData);
         } catch (Exception e) {
-            logger.error("Failed to encrypt data", e);
+            log("ERROR", "Failed to encrypt data", e);
             throw new RuntimeException("Failed to encrypt data", e);
         }
     }
@@ -131,7 +162,7 @@ public class CryptoUtils {
             
             return new String(plaintext);
         } catch (Exception e) {
-            logger.error("Failed to decrypt data", e);
+            log("ERROR", "Failed to decrypt data", e);
             throw new RuntimeException("Failed to decrypt data", e);
         }
     }
