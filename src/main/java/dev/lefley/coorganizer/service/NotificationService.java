@@ -9,6 +9,11 @@ import javax.swing.*;
 import java.awt.*;
 
 public class NotificationService {
+    // Toast timing constants
+    private static final int TOAST_DISPLAY_DURATION_MS = 1000;
+    private static final int FADE_STEPS = 20;
+    private static final int FADE_DELAY_MS = 50;
+    
     private final MontoyaApi api;
     private final Logger logger;
     
@@ -68,8 +73,8 @@ public class NotificationService {
         
         toastWindow.setVisible(true);
         
-        // Show toast for 1 second, then fade out over 1 second
-        Timer showTimer = new Timer(1000, e -> {
+        // Show toast for specified duration, then fade out
+        Timer showTimer = new Timer(TOAST_DISPLAY_DURATION_MS, e -> {
             try {
                 startFadeOut(toastWindow);
             } catch (Exception ex) {
@@ -126,13 +131,11 @@ public class NotificationService {
     
     private void startFadeOut(JWindow toastWindow) {
         final float[] opacity = {1.0f};
-        final int fadeSteps = 20;
-        final int fadeDelay = 50; // milliseconds between steps (1000ms total fade)
         
-        Timer fadeTimer = new Timer(fadeDelay, null);
+        Timer fadeTimer = new Timer(FADE_DELAY_MS, null);
         fadeTimer.addActionListener(e -> {
             try {
-                opacity[0] -= 1.0f / fadeSteps;
+                opacity[0] -= 1.0f / FADE_STEPS;
                 
                 if (opacity[0] <= 0.0f) {
                     // Fade complete - cleanup resources
