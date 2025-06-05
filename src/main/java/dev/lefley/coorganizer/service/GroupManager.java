@@ -54,6 +54,12 @@ public class GroupManager {
     public Group createGroup(String name) {
         logger.debug("Creating new group: " + name);
         
+        // Validate group name
+        String validationError = validateGroupName(name);
+        if (validationError != null) {
+            throw new IllegalArgumentException(validationError);
+        }
+        
         String symmetricKey = CryptoUtils.generateSymmetricKey();
         String fingerprint = CryptoUtils.generateFingerprint(name, symmetricKey);
         
@@ -69,6 +75,12 @@ public class GroupManager {
     
     public Group joinGroup(String inviteInput) throws InvalidInviteException {
         logger.debug("Attempting to join group with invite input");
+        
+        // Validate invite input
+        String validationError = validateInviteInput(inviteInput);
+        if (validationError != null) {
+            throw new InvalidInviteException(validationError);
+        }
         
         try {
             // Extract invite code from input (handle both raw code and formatted message)
@@ -255,6 +267,72 @@ public class GroupManager {
         } catch (Exception e) {
             logger.error("Failed to save groups to preferences - group changes may be lost on restart", e);
         }
+    }
+    
+    /**
+     * Validate group name input.
+     * @param name the group name to validate
+     * @return null if valid, error message if invalid
+     */
+    private String validateGroupName(String name) {
+        if (name == null) {
+            return "Group name cannot be null";
+        }
+        
+        String trimmed = name.trim();
+        
+        if (trimmed.isEmpty()) {
+            return "Group name cannot be empty";
+        }
+        
+        if (trimmed.length() < 2) {
+            return "Group name must be at least 2 characters long";
+        }
+        
+        if (trimmed.length() > 50) {
+            return "Group name must be less than 50 characters long";
+        }
+        
+        // Validate characters (alphanumeric, spaces, hyphens, underscores)
+        if (!trimmed.matches("^[a-zA-Z0-9\\s\\-_]+$")) {
+            return "Group name can only contain letters, numbers, spaces, hyphens, and underscores";
+        }
+        
+        // Check for excessive whitespace
+        if (trimmed.contains("  ")) {
+            return "Group name cannot contain consecutive spaces";
+        }
+        
+        // Check if group with same name already exists
+        if (groups.stream().anyMatch(group -> group.getName().equalsIgnoreCase(trimmed))) {
+            return "A group with this name already exists";
+        }
+        
+        return null; // Valid
+    }
+    
+    /**
+     * Validate invite input.
+     * @param inviteInput the invite input to validate
+     * @return null if valid, error message if invalid
+     */
+    private String validateInviteInput(String inviteInput) {
+        if (inviteInput == null) {
+            return "Invite code cannot be null";
+        }
+        
+        String trimmed = inviteInput.trim();
+        
+        if (trimmed.isEmpty()) {
+            return "Invite code cannot be empty";
+        }
+        
+        // Basic length check to prevent excessive input
+        if (trimmed.length() > 10000) {
+            return "Invite code is too long";
+        }
+        
+        return null; // Valid - let the parsing logic handle the rest
     }
     
     public static class InvalidInviteException extends Exception {
