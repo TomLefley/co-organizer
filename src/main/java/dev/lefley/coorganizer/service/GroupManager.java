@@ -101,9 +101,17 @@ public class GroupManager {
             return group;
             
         } catch (IllegalArgumentException e) {
-            throw new InvalidInviteException("The group invite was malformed.", e);
+            // This typically happens when Base64 decoding fails
+            logger.debug("Base64 decode failed for invite code: " + e.getMessage());
+            throw new InvalidInviteException("The invite code contains invalid characters and cannot be decoded.", e);
         } catch (JsonSyntaxException e) {
-            throw new InvalidInviteException("The group invite was malformed.", e);
+            // This happens when the decoded content is not valid JSON
+            logger.debug("JSON parsing failed for invite content: " + e.getMessage());
+            throw new InvalidInviteException("The invite code does not contain valid group information.", e);
+        } catch (Exception e) {
+            // Catch any other unexpected exceptions
+            logger.error("Unexpected error processing invite", e);
+            throw new InvalidInviteException("An unexpected error occurred while processing the invite code.", e);
         }
     }
     
@@ -140,8 +148,12 @@ public class GroupManager {
             clipboard.setContents(selection, null);
             
             logger.info("Copied invite message to clipboard for group: " + group.getName());
+        } catch (SecurityException e) {
+            logger.error("Permission denied accessing system clipboard", e);
+        } catch (IllegalStateException e) {
+            logger.error("System clipboard unavailable", e);
         } catch (Exception e) {
-            logger.error("Failed to copy invite message to clipboard: " + e.getMessage());
+            logger.error("Unexpected error copying to clipboard", e);
         }
     }
     
@@ -226,8 +238,12 @@ public class GroupManager {
             } else {
                 logger.debug("No saved groups found in preferences");
             }
+        } catch (JsonSyntaxException e) {
+            logger.error("Corrupted group data in preferences, starting fresh", e);
+            // Clear corrupted data and start fresh
+            api.persistence().preferences().setString(PREFERENCES_KEY_GROUPS, null);
         } catch (Exception e) {
-            logger.error("Failed to load groups from preferences: " + e.getMessage());
+            logger.error("Unexpected error loading groups from preferences", e);
         }
     }
     
@@ -237,7 +253,7 @@ public class GroupManager {
             api.persistence().preferences().setString(PREFERENCES_KEY_GROUPS, groupsJson);
             logger.debug("Saved " + groups.size() + " groups to preferences");
         } catch (Exception e) {
-            logger.error("Failed to save groups to preferences: " + e.getMessage());
+            logger.error("Failed to save groups to preferences - group changes may be lost on restart", e);
         }
     }
     
