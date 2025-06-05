@@ -69,7 +69,18 @@ public class NotificationService {
         toastWindow.setVisible(true);
         
         // Show toast for 1 second, then fade out over 1 second
-        Timer showTimer = new Timer(1000, e -> startFadeOut(toastWindow));
+        Timer showTimer = new Timer(1000, e -> {
+            try {
+                startFadeOut(toastWindow);
+            } catch (Exception ex) {
+                logger.error("Error during toast fade out", ex);
+                // Ensure window is disposed even if fade fails
+                if (toastWindow.isDisplayable()) {
+                    toastWindow.setVisible(false);
+                    toastWindow.dispose();
+                }
+            }
+        });
         showTimer.setRepeats(false);
         showTimer.start();
         
@@ -120,14 +131,33 @@ public class NotificationService {
         
         Timer fadeTimer = new Timer(fadeDelay, null);
         fadeTimer.addActionListener(e -> {
-            opacity[0] -= 1.0f / fadeSteps;
-            
-            if (opacity[0] <= 0.0f) {
-                toastWindow.setVisible(false);
-                toastWindow.dispose();
+            try {
+                opacity[0] -= 1.0f / fadeSteps;
+                
+                if (opacity[0] <= 0.0f) {
+                    // Fade complete - cleanup resources
+                    fadeTimer.stop();
+                    if (toastWindow.isDisplayable()) {
+                        toastWindow.setVisible(false);
+                        toastWindow.dispose();
+                    }
+                } else {
+                    // Continue fading
+                    if (toastWindow.isDisplayable()) {
+                        toastWindow.setOpacity(Math.max(0.0f, opacity[0]));
+                    } else {
+                        // Window was disposed externally, stop timer
+                        fadeTimer.stop();
+                    }
+                }
+            } catch (Exception ex) {
+                logger.error("Error during fade animation", ex);
+                // Ensure cleanup on error
                 fadeTimer.stop();
-            } else {
-                toastWindow.setOpacity(Math.max(0.0f, opacity[0]));
+                if (toastWindow.isDisplayable()) {
+                    toastWindow.setVisible(false);
+                    toastWindow.dispose();
+                }
             }
         });
         
