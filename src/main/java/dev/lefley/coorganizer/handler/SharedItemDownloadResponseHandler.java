@@ -158,10 +158,8 @@ public class SharedItemDownloadResponseHandler implements ProxyResponseHandler {
         for (int i = 0; i < items.size(); i++) {
             try {
                 HttpRequestResponse item = items.get(i);
-                logger.trace("Sending item " + (i + 1) + "/" + items.size() + " to organizer");
                 api.organizer().sendToOrganizer(item);
                 successCount++;
-                logger.trace("Successfully sent item " + (i + 1) + " to organizer");
             } catch (Exception e) {
                 logger.error("Failed to send item " + (i + 1) + " to organizer: " + e.getMessage());
             }

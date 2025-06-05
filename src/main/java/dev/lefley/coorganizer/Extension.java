@@ -38,30 +38,25 @@ public class Extension implements BurpExtension {
         this.logger = new Logger(api, Extension.class);
         
         api.extension().setName(EXTENSION_NAME);
-        logger.info("Extension initializing...");
-
         registerContextMenuProvider();
         registerProxyResponseHandler();
         registerGroupTab();
         
-        logger.info("Extension initialization complete");
+        logger.info("Co-Organizer extension loaded successfully");
     }
     
     private void registerContextMenuProvider() {
         ShareContextMenuProvider contextMenuProvider = new ShareContextMenuProvider(api);
         api.userInterface().registerContextMenuItemsProvider(contextMenuProvider);
-        logger.info("Context menu provider registered successfully");
     }
     
     private void registerProxyResponseHandler() {
         SharedItemDownloadResponseHandler responseHandler = new SharedItemDownloadResponseHandler(api);
         api.proxy().registerResponseHandler(responseHandler);
-        logger.info("Proxy response handler registered successfully");
     }
     
     private void registerGroupTab() {
         GroupTab groupTab = new GroupTab(api);
         api.userInterface().registerSuiteTab(TAB_NAME, groupTab);
-        logger.info("Group management tab registered successfully");
     }
 }

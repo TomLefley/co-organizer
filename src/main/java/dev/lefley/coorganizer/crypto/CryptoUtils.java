@@ -71,38 +71,29 @@ public class CryptoUtils {
     }
     
     public static String generateRandomId() {
-        logger.trace("Generating random ID");
         SecureRandom random = new SecureRandom();
         byte[] bytes = new byte[16];
         random.nextBytes(bytes);
-        String id = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-        logger.trace("Generated random ID: " + id);
-        return id;
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
     
     public static String encrypt(String plaintext, String base64Key) {
         try {
-            logger.debug("Starting encryption operation");
-            
             // Decode the base64 key
             byte[] keyBytes = Base64.getDecoder().decode(base64Key);
             SecretKeySpec secretKey = new SecretKeySpec(keyBytes, AES_ALGORITHM);
-            logger.trace("Decoded encryption key");
             
             // Generate random IV
             byte[] iv = new byte[GCM_IV_LENGTH];
             new SecureRandom().nextBytes(iv);
-            logger.trace("Generated IV for encryption");
             
             // Setup cipher
             Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION);
             GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmSpec);
-            logger.trace("Initialized cipher for encryption");
             
             // Encrypt the plaintext
             byte[] ciphertext = cipher.doFinal(plaintext.getBytes());
-            logger.trace("Completed encryption operation");
             
             // Combine IV and ciphertext
             byte[] encryptedData = new byte[iv.length + ciphertext.length];
@@ -110,9 +101,7 @@ public class CryptoUtils {
             System.arraycopy(ciphertext, 0, encryptedData, iv.length, ciphertext.length);
             
             // Return base64 encoded result
-            String result = Base64.getEncoder().encodeToString(encryptedData);
-            logger.debug("Successfully encrypted data");
-            return result;
+            return Base64.getEncoder().encodeToString(encryptedData);
         } catch (Exception e) {
             logger.error("Failed to encrypt data", e);
             throw new RuntimeException("Failed to encrypt data", e);
@@ -121,34 +110,26 @@ public class CryptoUtils {
     
     public static String decrypt(String encryptedData, String base64Key) {
         try {
-            logger.debug("Starting decryption operation");
-            
             // Decode the base64 key and encrypted data
             byte[] keyBytes = Base64.getDecoder().decode(base64Key);
             byte[] encryptedBytes = Base64.getDecoder().decode(encryptedData);
             SecretKeySpec secretKey = new SecretKeySpec(keyBytes, AES_ALGORITHM);
-            logger.trace("Decoded decryption key and encrypted data");
             
             // Extract IV and ciphertext
             byte[] iv = new byte[GCM_IV_LENGTH];
             byte[] ciphertext = new byte[encryptedBytes.length - GCM_IV_LENGTH];
             System.arraycopy(encryptedBytes, 0, iv, 0, iv.length);
             System.arraycopy(encryptedBytes, iv.length, ciphertext, 0, ciphertext.length);
-            logger.trace("Extracted IV and ciphertext");
             
             // Setup cipher
             Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION);
             GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
             cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec);
-            logger.trace("Initialized cipher for decryption");
             
             // Decrypt the ciphertext
             byte[] plaintext = cipher.doFinal(ciphertext);
-            logger.trace("Completed decryption operation");
             
-            String result = new String(plaintext);
-            logger.debug("Successfully decrypted data");
-            return result;
+            return new String(plaintext);
         } catch (Exception e) {
             logger.error("Failed to decrypt data", e);
             throw new RuntimeException("Failed to decrypt data", e);

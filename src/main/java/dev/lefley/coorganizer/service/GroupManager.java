@@ -73,12 +73,10 @@ public class GroupManager {
         try {
             // Extract invite code from input (handle both raw code and formatted message)
             String inviteCode = extractInviteCode(inviteInput);
-            logger.trace("Extracted invite code from input");
             
             // Decode base64 invite code
             byte[] decodedBytes = Base64.getDecoder().decode(inviteCode);
             String jsonString = new String(decodedBytes);
-            logger.trace("Decoded base64 invite code");
             
             // Parse JSON to GroupInvite
             GroupInvite invite = gson.fromJson(jsonString, GroupInvite.class);
@@ -86,7 +84,6 @@ public class GroupManager {
             if (invite.getName() == null || invite.getKey() == null || invite.getFingerprint() == null) {
                 throw new InvalidInviteException("The group invite was malformed.");
             }
-            logger.trace("Validated invite structure");
             
             // Create group from invite
             Group group = invite.toGroup();
@@ -95,7 +92,6 @@ public class GroupManager {
             if (groups.contains(group)) {
                 throw new InvalidInviteException("You are already a member of this group.");
             }
-            logger.trace("Verified group is not already joined");
             
             groups.add(group);
             saveGroupsToPreferences();
@@ -198,7 +194,6 @@ public class GroupManager {
     }
     
     private void notifyGroupAdded(Group group) {
-        logger.trace("Notifying listeners of group addition: " + group.getName());
         for (GroupManagerListener listener : listeners) {
             try {
                 listener.onGroupAdded(group);
@@ -209,7 +204,6 @@ public class GroupManager {
     }
     
     private void notifyGroupRemoved(Group group) {
-        logger.trace("Notifying listeners of group removal: " + group.getName());
         for (GroupManagerListener listener : listeners) {
             try {
                 listener.onGroupRemoved(group);
@@ -221,7 +215,6 @@ public class GroupManager {
     
     private void loadGroupsFromPreferences() {
         try {
-            logger.trace("Loading groups from preferences");
             String groupsJson = api.persistence().preferences().getString(PREFERENCES_KEY_GROUPS);
             if (groupsJson != null && !groupsJson.trim().isEmpty()) {
                 Type listType = new TypeToken<List<Group>>(){}.getType();
@@ -240,7 +233,6 @@ public class GroupManager {
     
     private void saveGroupsToPreferences() {
         try {
-            logger.trace("Saving groups to preferences");
             String groupsJson = gson.toJson(groups);
             api.persistence().preferences().setString(PREFERENCES_KEY_GROUPS, groupsJson);
             logger.debug("Saved " + groups.size() + " groups to preferences");

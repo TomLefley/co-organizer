@@ -24,19 +24,9 @@ public class SharedItemDownloadMatcher {
         HttpService httpService = response.initiatingRequest().httpService();
         String path = response.initiatingRequest().path();
         
-        // Debug logging
-        logger.trace("Host: '" + httpService.host() + "'");
-        logger.trace("Port: " + httpService.port());
-        logger.trace("Path: '" + path + "'");
-        logger.trace("Path ends with '" + TARGET_PATH_SUFFIX + "': " + (path != null && path.endsWith(TARGET_PATH_SUFFIX)));
-        
-        boolean matches = TARGET_HOST.equals(httpService.host()) && 
-                         httpService.port() == TARGET_PORT && 
-                         path != null && 
-                         path.endsWith(TARGET_PATH_SUFFIX);
-        
-        logger.trace("Overall match result: " + matches);
-        
-        return matches;
+        return TARGET_HOST.equals(httpService.host()) && 
+               httpService.port() == TARGET_PORT && 
+               path != null && 
+               path.endsWith(TARGET_PATH_SUFFIX);
     }
 }

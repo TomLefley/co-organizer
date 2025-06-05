@@ -31,12 +31,9 @@ public class HttpRequestResponseSerializer {
     }
     
     public String serialize(List<HttpRequestResponse> items) {
-        logger.info("Starting serialization of " + items.size() + " HTTP request/response items using Gson");
-        
         List<HttpRequestResponseData> dataItems = new ArrayList<>();
         
         for (int i = 0; i < items.size(); i++) {
-            logger.debug("Serializing item " + (i + 1) + "/" + items.size());
             HttpRequestResponse item = items.get(i);
             
             HttpRequestData requestData = serializeRequest(item, i + 1);
@@ -47,22 +44,18 @@ public class HttpRequestResponseSerializer {
         }
         
         String json = gson.toJson(dataItems);
-        logger.info("Gson serialization complete. Total JSON length: " + json.length());
         return json;
     }
     
     public List<HttpRequestResponse> deserialize(String jsonData) {
-        logger.info("Starting deserialization of JSON data using Gson (length: " + jsonData.length() + ")");
         List<HttpRequestResponse> items = new ArrayList<>();
         
         try {
             Type listType = new TypeToken<List<HttpRequestResponseData>>(){}.getType();
             List<HttpRequestResponseData> dataItems = gson.fromJson(jsonData, listType);
             
-            logger.debug("Gson deserialized " + dataItems.size() + " objects");
             
             for (int i = 0; i < dataItems.size(); i++) {
-                logger.debug("Processing object " + (i + 1) + "/" + dataItems.size());
                 HttpRequestResponseData dataItem = dataItems.get(i);
                 
                 HttpRequestResponse item = deserializeItem(dataItem, i + 1);
@@ -72,22 +65,17 @@ public class HttpRequestResponseSerializer {
             }
         } catch (Exception e) {
             logger.error("Error deserializing HTTP items with Gson", e);
-            e.printStackTrace();
         }
         
-        logger.info("Gson deserialization complete. Created " + items.size() + " HttpRequestResponse items");
         return items;
     }
     
     private HttpRequestData serializeRequest(HttpRequestResponse item, int itemNumber) {
-        logger.debug("Serializing request for item " + itemNumber);
         String method = item.request().method();
         String url = item.request().url();
-        logger.trace("Request method: " + method + ", URL: " + url);
         
         String requestHeaders = item.request().toString().split("\\r\\n\\r\\n")[0];
         byte[] requestBodyBytes = item.request().body().getBytes();
-        logger.trace("Request headers length: " + requestHeaders.length() + ", body length: " + requestBodyBytes.length + " bytes");
         
         return new HttpRequestData(
             Base64.getEncoder().encodeToString(method.getBytes()),
@@ -99,13 +87,10 @@ public class HttpRequestResponseSerializer {
     
     private HttpResponseData serializeResponse(HttpRequestResponse item, int itemNumber) {
         if (item.response() != null) {
-            logger.debug("Serializing response for item " + itemNumber);
             int statusCode = item.response().statusCode();
-            logger.trace("Response status code: " + statusCode);
             
             String responseHeaders = item.response().headers().toString();
             byte[] responseBodyBytes = item.response().body().getBytes();
-            logger.trace("Response headers length: " + responseHeaders.length() + ", body length: " + responseBodyBytes.length + " bytes");
             
             return new HttpResponseData(
                 Base64.getEncoder().encodeToString(String.valueOf(statusCode).getBytes()),
@@ -113,7 +98,6 @@ public class HttpRequestResponseSerializer {
                 Base64.getEncoder().encodeToString(responseBodyBytes)
             );
         } else {
-            logger.debug("No response available for item " + itemNumber);
             return new HttpResponseData(
                 Base64.getEncoder().encodeToString("0".getBytes()),
                 Base64.getEncoder().encodeToString("".getBytes()),
@@ -123,7 +107,6 @@ public class HttpRequestResponseSerializer {
     }
     
     private AnnotationData serializeAnnotations(HttpRequestResponse item, int itemNumber) {
-        logger.debug("Serializing annotations for item " + itemNumber);
         
         try {
             // Get annotations from the item
@@ -137,14 +120,12 @@ public class HttpRequestResponseSerializer {
                 if (item.annotations().hasNotes()) {
                     notes = item.annotations().notes();
                     hasNotes = true;
-                    logger.trace("Item " + itemNumber + " has notes: " + notes.length() + " characters");
                 }
                 
                 // Check if the item has highlight color
                 if (item.annotations().hasHighlightColor()) {
                     highlightColor = item.annotations().highlightColor().toString();
                     hasHighlightColor = true;
-                    logger.trace("Item " + itemNumber + " has highlight color: " + highlightColor);
                 }
             }
             
@@ -180,7 +161,6 @@ public class HttpRequestResponseSerializer {
             String requestHeaders = new String(Base64.getDecoder().decode(requestData.headers));
             byte[] requestBody = Base64.getDecoder().decode(requestData.body);
             
-            logger.debug("Decoded request - URL: " + requestUrl + ", Method: " + requestMethod);
             
             HttpRequest request = HttpRequest.httpRequestFromUrl(requestUrl)
                 .withMethod(requestMethod)
@@ -198,13 +178,10 @@ public class HttpRequestResponseSerializer {
             HttpRequestResponse item;
             if (annotations != null) {
                 item = HttpRequestResponse.httpRequestResponse(request, response, annotations);
-                logger.debug("Created HttpRequestResponse with restored annotations for object " + itemNumber);
             } else {
                 item = HttpRequestResponse.httpRequestResponse(request, response);
-                logger.debug("Created HttpRequestResponse without annotations for object " + itemNumber);
             }
             
-            logger.debug("Successfully created HttpRequestResponse with " + (response != null ? "response" : "request only") + " for object " + itemNumber);
             return item;
             
         } catch (Exception e) {
@@ -215,7 +192,6 @@ public class HttpRequestResponseSerializer {
     
     private HttpResponse deserializeResponse(HttpResponseData responseData, int itemNumber) {
         if (responseData == null) {
-            logger.debug("No response data available for object " + itemNumber);
             return null;
         }
         
@@ -225,12 +201,10 @@ public class HttpRequestResponseSerializer {
             byte[] responseBody = Base64.getDecoder().decode(responseData.body);
             
             int statusCode = Integer.parseInt(statusCodeStr);
-            logger.debug("Decoded response - Status: " + statusCode + ", Headers length: " + responseHeaders.length() + ", Body length: " + responseBody.length);
             
             if (statusCode > 0) {
                 String responseString = "HTTP/1.1 " + statusCode + " OK\r\n" + responseHeaders + "\r\n\r\n" + new String(responseBody);
                 HttpResponse response = HttpResponse.httpResponse(responseString);
-                logger.debug("Created HttpResponse for object " + itemNumber);
                 return response;
             }
         } catch (Exception e) {
@@ -243,21 +217,18 @@ public class HttpRequestResponseSerializer {
     private Annotations createAnnotations(AnnotationData annotationData, int itemNumber) {
         try {
             if (annotationData.hasNotes || annotationData.hasHighlightColor) {
-                logger.debug("Creating annotations for item " + itemNumber);
                 
                 String notes = "";
                 HighlightColor highlightColor = null;
                 
                 if (annotationData.hasNotes) {
                     notes = new String(Base64.getDecoder().decode(annotationData.notes));
-                    logger.trace("Item " + itemNumber + " restoring notes: " + notes.length() + " characters");
                 }
                 
                 if (annotationData.hasHighlightColor) {
                     String colorName = new String(Base64.getDecoder().decode(annotationData.highlightColor));
                     try {
                         highlightColor = HighlightColor.valueOf(colorName);
-                        logger.trace("Item " + itemNumber + " restoring highlight color: " + colorName);
                     } catch (IllegalArgumentException e) {
                         logger.error("Invalid highlight color: " + colorName + " for item " + itemNumber);
                     }

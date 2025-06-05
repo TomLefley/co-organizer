@@ -26,14 +26,13 @@ public class NotificationService {
     }
     
     private void showToast(String message, ToastType type) {
-        logger.debug("Showing toast notification: " + message);
-        
         SwingUtilities.invokeLater(() -> {
             try {
                 Window parentWindow = findBurpWindow();
                 createToastWindow(message, type, parentWindow);
             } catch (Exception e) {
-                logger.error("Failed to show toast notification: " + e.getMessage());
+                // Silently fail - toast notifications are not critical
+                logger.error("Failed to show toast notification", e);
             }
         });
     }
@@ -74,7 +73,6 @@ public class NotificationService {
         showTimer.setRepeats(false);
         showTimer.start();
         
-        logger.debug("Toast notification displayed successfully");
     }
     
     private JPanel createToastPanel(String message, ToastType type) {
@@ -128,7 +126,6 @@ public class NotificationService {
                 toastWindow.setVisible(false);
                 toastWindow.dispose();
                 fadeTimer.stop();
-                logger.debug("Toast notification faded out and disposed");
             } else {
                 toastWindow.setOpacity(Math.max(0.0f, opacity[0]));
             }

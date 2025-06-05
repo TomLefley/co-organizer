@@ -44,12 +44,8 @@ public class ShareService {
     }
     
     public void shareItems(List<HttpRequestResponse> selectedItems, Group group) {
-        logger.info("Starting share operation with " + selectedItems.size() + " items" + 
-            (group != null ? " for group: " + group.getName() : " (unencrypted)"));
-        
         try {
             String jsonData = serializer.serialize(selectedItems);
-            logger.debug("JSON serialization complete. Data length: " + jsonData.length());
             
             // Create the outer JSON structure
             JsonObject outerJson = new JsonObject();
@@ -59,21 +55,17 @@ public class ShareService {
                 String encryptedData = CryptoUtils.encrypt(jsonData, group.getSymmetricKey());
                 outerJson.addProperty("fingerprint", group.getFingerprint());
                 outerJson.addProperty("data", encryptedData);
-                logger.debug("Data encrypted for group: " + group.getName());
             } else {
                 // No encryption, just wrap in outer JSON
                 outerJson.addProperty("data", jsonData);
-                logger.debug("Data not encrypted (no group specified)");
             }
             
             String finalJsonData = gson.toJson(outerJson);
-            logger.debug("Final JSON structure created. Length: " + finalJsonData.length());
-            
             String url = uploadToStore(finalJsonData);
             
             if (url != null) {
                 copyToClipboard(url);
-                logger.info("Share successful - URL copied to clipboard: " + url);
+                logger.info("Share successful - " + selectedItems.size() + " items");
                 String message = group != null ? 
                     "Sharing link copied to clipboard! (encrypted for " + group.getName() + ")" :
                     "Sharing link copied to clipboard!";
@@ -90,18 +82,11 @@ public class ShareService {
     }
     
     private String uploadToStore(String jsonData) {
-        logger.debug("Creating HTTP request to: " + STORE_HOST + ":" + STORE_PORT + STORE_PATH);
-        
         HttpService httpService = HttpService.httpService(STORE_HOST, STORE_PORT, false);
         
         String encodedJsonData = Base64.getEncoder().encodeToString(jsonData.getBytes());
-        logger.debug("Base64 encoded JSON data (original: " + jsonData.length() + " bytes, encoded: " + encodedJsonData.length() + " chars)");
-        
         String boundary = "----WebKitFormBoundary" + System.currentTimeMillis();
         String multipartBody = createMultipartFormData(boundary, encodedJsonData);
-        
-        logger.debug("Created multipart form data with boundary: " + boundary);
-        logger.trace("Multipart body length: " + multipartBody.length());
         
         HttpRequest request = HttpRequest.httpRequest()
                 .withMethod("POST")
@@ -111,7 +96,6 @@ public class ShareService {
                 .withBody(multipartBody)
                 .withService(httpService);
         
-        logger.debug("Sending HTTP request using Montoya network stack with upstream TLS verification...");
         RequestOptions requestOptions = RequestOptions.requestOptions().withUpstreamTLSVerification();
         HttpRequestResponse response = api.http().sendRequest(request, requestOptions);
         
@@ -119,13 +103,10 @@ public class ShareService {
             int statusCode = response.response().statusCode();
             String responseBodyStr = response.response().bodyToString();
             
-            logger.debug("HTTP response received. Status code: " + statusCode);
-            logger.trace("Response body: " + responseBodyStr);
-            
             if (statusCode == 200) {
                 return extractUrlFromResponse(responseBodyStr);
             } else {
-                logger.error("HTTP request failed. Status: " + statusCode + ", Body: " + responseBodyStr);
+                logger.debug("HTTP request failed. Status: " + statusCode);
                 notificationService.showErrorToast("Share failed: HTTP " + statusCode);
             }
         } else {
@@ -137,8 +118,6 @@ public class ShareService {
     }
     
     private String createMultipartFormData(String boundary, String encodedData) {
-        logger.trace("Creating multipart form data for file 'rr' with base64 encoded content");
-        
         StringBuilder multipart = new StringBuilder();
         
         multipart.append("--").append(boundary).append("\r\n");
@@ -150,45 +129,37 @@ public class ShareService {
         multipart.append("\r\n");
         multipart.append("--").append(boundary).append("--\r\n");
         
-        logger.trace("Multipart form data created successfully with base64 encoding");
         return multipart.toString();
     }
     
     private String extractUrlFromResponse(String responseBody) {
-        logger.debug("Extracting URL from response body (length: " + responseBody.length() + ")");
-        
         if (responseBody.contains("\"url\"")) {
-            logger.trace("Found 'url' property in response");
             int urlStart = responseBody.indexOf("\"url\":");
             if (urlStart != -1) {
-                logger.trace("Found 'url' key at position: " + urlStart);
                 urlStart = responseBody.indexOf("\"", urlStart + 6) + 1;
                 int urlEnd = responseBody.indexOf("\"", urlStart);
                 if (urlEnd != -1) {
                     String extractedUrl = responseBody.substring(urlStart, urlEnd);
-                    logger.debug("Successfully extracted URL: " + extractedUrl);
                     return extractedUrl;
                 } else {
-                    logger.error("Could not find end quote for URL value");
+                    logger.debug("Could not find end quote for URL value");
                 }
             } else {
-                logger.error("Could not find 'url' key in response");
+                logger.debug("Could not find 'url' key in response");
             }
         } else {
-            logger.error("Response does not contain 'url' property");
+            logger.debug("Response does not contain 'url' property");
         }
         return null;
     }
     
     private void copyToClipboard(String text) {
-        logger.debug("Copying text to clipboard: " + text);
         try {
             Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
             StringSelection selection = new StringSelection(text);
             clipboard.setContents(selection, null);
-            logger.debug("Successfully copied to clipboard");
         } catch (Exception e) {
-            logger.error("Failed to copy to clipboard: " + e.getMessage());
+            logger.error("Failed to copy to clipboard", e);
         }
     }
 }
