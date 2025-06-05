@@ -85,7 +85,7 @@ public class ShareService {
             
         } catch (Exception e) {
             logger.error("Error sharing items", e);
-            notificationService.showErrorToast("Share failed: " + e.getClass().getSimpleName());
+            notificationService.showErrorToast("Share failed: " + e.getMessage());
         }
     }
     
