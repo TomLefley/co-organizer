@@ -15,6 +15,9 @@ public class CryptoUtils {
     
     private static Logger logger;
     
+    // Efficient hex conversion lookup table
+    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+    
     private static final String AES_ALGORITHM = "AES";
     private static final String AES_TRANSFORMATION = "AES/GCM/NoPadding";
     private static final int AES_KEY_LENGTH = 256;
@@ -75,18 +78,8 @@ public class CryptoUtils {
             String combined = groupName + ":" + symmetricKey;
             byte[] hash = digest.digest(combined.getBytes());
             
-            // Convert to hex and take first 16 characters for readability
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : hash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) {
-                    hexString.append('0');
-                }
-                hexString.append(hex);
-            }
-            
-            // Format as groups of 4 characters for readability
-            String fullHex = hexString.toString().substring(0, 16).toUpperCase();
+            // Convert to hex efficiently - take first 8 bytes for 16 hex characters
+            String fullHex = bytesToHex(hash, 8);
             String fingerprint = String.format("%s-%s-%s-%s", 
                 fullHex.substring(0, 4),
                 fullHex.substring(4, 8), 
@@ -99,6 +92,25 @@ public class CryptoUtils {
             log("ERROR", "Failed to generate fingerprint for group: " + groupName, e);
             throw new RuntimeException("Failed to generate fingerprint", e);
         }
+    }
+    
+    /**
+     * Efficiently converts bytes to hex string using lookup table.
+     * @param bytes the byte array to convert
+     * @param length maximum number of bytes to convert
+     * @return hex string representation
+     */
+    private static String bytesToHex(byte[] bytes, int length) {
+        int actualLength = Math.min(bytes.length, length);
+        char[] hexChars = new char[actualLength * 2];
+        
+        for (int j = 0; j < actualLength; j++) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+        }
+        
+        return new String(hexChars);
     }
     
     public static String generateRandomId() {
