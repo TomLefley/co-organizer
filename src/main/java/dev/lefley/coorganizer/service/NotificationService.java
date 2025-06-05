@@ -74,7 +74,7 @@ public class NotificationService {
         showTimer.setRepeats(false);
         showTimer.start();
         
-        api.logging().logToOutput("Toast notification displayed successfully");
+        logger.debug("Toast notification displayed successfully");
     }
     
     private JPanel createToastPanel(String message, ToastType type) {
@@ -128,7 +128,7 @@ public class NotificationService {
                 toastWindow.setVisible(false);
                 toastWindow.dispose();
                 fadeTimer.stop();
-                api.logging().logToOutput("Toast notification faded out and disposed");
+                logger.debug("Toast notification faded out and disposed");
             } else {
                 toastWindow.setOpacity(Math.max(0.0f, opacity[0]));
             }

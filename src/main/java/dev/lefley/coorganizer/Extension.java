@@ -5,6 +5,7 @@ import burp.api.montoya.MontoyaApi;
 import dev.lefley.coorganizer.handler.SharedItemDownloadResponseHandler;
 import dev.lefley.coorganizer.ui.ShareContextMenuProvider;
 import dev.lefley.coorganizer.ui.GroupTab;
+import dev.lefley.coorganizer.util.Logger;
 
 /**
  * Co-Organizer Burp Suite Extension
@@ -29,36 +30,38 @@ public class Extension implements BurpExtension {
     private static final String TAB_NAME = "Co-Organizer Groups";
     
     private MontoyaApi api;
+    private Logger logger;
     
     @Override
     public void initialize(MontoyaApi montoyaApi) {
         this.api = montoyaApi;
+        this.logger = new Logger(api, Extension.class);
         
         api.extension().setName(EXTENSION_NAME);
-        api.logging().logToOutput(EXTENSION_NAME + " extension initializing...");
+        logger.info("Extension initializing...");
 
         registerContextMenuProvider();
         registerProxyResponseHandler();
         registerGroupTab();
         
-        api.logging().logToOutput(EXTENSION_NAME + " extension initialization complete");
+        logger.info("Extension initialization complete");
     }
     
     private void registerContextMenuProvider() {
         ShareContextMenuProvider contextMenuProvider = new ShareContextMenuProvider(api);
         api.userInterface().registerContextMenuItemsProvider(contextMenuProvider);
-        api.logging().logToOutput("Context menu provider registered successfully");
+        logger.info("Context menu provider registered successfully");
     }
     
     private void registerProxyResponseHandler() {
         SharedItemDownloadResponseHandler responseHandler = new SharedItemDownloadResponseHandler(api);
         api.proxy().registerResponseHandler(responseHandler);
-        api.logging().logToOutput("Proxy response handler registered successfully");
+        logger.info("Proxy response handler registered successfully");
     }
     
     private void registerGroupTab() {
         GroupTab groupTab = new GroupTab(api);
         api.userInterface().registerSuiteTab(TAB_NAME, groupTab);
-        api.logging().logToOutput("Group management tab registered successfully");
+        logger.info("Group management tab registered successfully");
     }
 }

@@ -12,6 +12,7 @@ import dev.lefley.coorganizer.model.AnnotationData;
 import dev.lefley.coorganizer.model.HttpRequestData;
 import dev.lefley.coorganizer.model.HttpRequestResponseData;
 import dev.lefley.coorganizer.model.HttpResponseData;
+import dev.lefley.coorganizer.util.Logger;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -21,19 +22,21 @@ import java.util.List;
 public class HttpRequestResponseSerializer {
     private final MontoyaApi api;
     private final Gson gson;
+    private final Logger logger;
     
     public HttpRequestResponseSerializer(MontoyaApi api) {
         this.api = api;
         this.gson = new Gson();
+        this.logger = new Logger(api, HttpRequestResponseSerializer.class);
     }
     
     public String serialize(List<HttpRequestResponse> items) {
-        api.logging().logToOutput("Starting serialization of " + items.size() + " HTTP request/response items using Gson");
+        logger.info("Starting serialization of " + items.size() + " HTTP request/response items using Gson");
         
         List<HttpRequestResponseData> dataItems = new ArrayList<>();
         
         for (int i = 0; i < items.size(); i++) {
-            api.logging().logToOutput("Serializing item " + (i + 1) + "/" + items.size());
+            logger.debug("Serializing item " + (i + 1) + "/" + items.size());
             HttpRequestResponse item = items.get(i);
             
             HttpRequestData requestData = serializeRequest(item, i + 1);
@@ -44,22 +47,22 @@ public class HttpRequestResponseSerializer {
         }
         
         String json = gson.toJson(dataItems);
-        api.logging().logToOutput("Gson serialization complete. Total JSON length: " + json.length());
+        logger.info("Gson serialization complete. Total JSON length: " + json.length());
         return json;
     }
     
     public List<HttpRequestResponse> deserialize(String jsonData) {
-        api.logging().logToOutput("Starting deserialization of JSON data using Gson (length: " + jsonData.length() + ")");
+        logger.info("Starting deserialization of JSON data using Gson (length: " + jsonData.length() + ")");
         List<HttpRequestResponse> items = new ArrayList<>();
         
         try {
             Type listType = new TypeToken<List<HttpRequestResponseData>>(){}.getType();
             List<HttpRequestResponseData> dataItems = gson.fromJson(jsonData, listType);
             
-            api.logging().logToOutput("Gson deserialized " + dataItems.size() + " objects");
+            logger.debug("Gson deserialized " + dataItems.size() + " objects");
             
             for (int i = 0; i < dataItems.size(); i++) {
-                api.logging().logToOutput("Processing object " + (i + 1) + "/" + dataItems.size());
+                logger.debug("Processing object " + (i + 1) + "/" + dataItems.size());
                 HttpRequestResponseData dataItem = dataItems.get(i);
                 
                 HttpRequestResponse item = deserializeItem(dataItem, i + 1);
@@ -68,23 +71,23 @@ public class HttpRequestResponseSerializer {
                 }
             }
         } catch (Exception e) {
-            api.logging().logToError("Error deserializing HTTP items with Gson: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            logger.error("Error deserializing HTTP items with Gson", e);
             e.printStackTrace();
         }
         
-        api.logging().logToOutput("Gson deserialization complete. Created " + items.size() + " HttpRequestResponse items");
+        logger.info("Gson deserialization complete. Created " + items.size() + " HttpRequestResponse items");
         return items;
     }
     
     private HttpRequestData serializeRequest(HttpRequestResponse item, int itemNumber) {
-        api.logging().logToOutput("Serializing request for item " + itemNumber);
+        logger.debug("Serializing request for item " + itemNumber);
         String method = item.request().method();
         String url = item.request().url();
-        api.logging().logToOutput("Request method: " + method + ", URL: " + url);
+        logger.trace("Request method: " + method + ", URL: " + url);
         
         String requestHeaders = item.request().toString().split("\\r\\n\\r\\n")[0];
         byte[] requestBodyBytes = item.request().body().getBytes();
-        api.logging().logToOutput("Request headers length: " + requestHeaders.length() + ", body length: " + requestBodyBytes.length + " bytes");
+        logger.trace("Request headers length: " + requestHeaders.length() + ", body length: " + requestBodyBytes.length + " bytes");
         
         return new HttpRequestData(
             Base64.getEncoder().encodeToString(method.getBytes()),
@@ -96,13 +99,13 @@ public class HttpRequestResponseSerializer {
     
     private HttpResponseData serializeResponse(HttpRequestResponse item, int itemNumber) {
         if (item.response() != null) {
-            api.logging().logToOutput("Serializing response for item " + itemNumber);
+            logger.debug("Serializing response for item " + itemNumber);
             int statusCode = item.response().statusCode();
-            api.logging().logToOutput("Response status code: " + statusCode);
+            logger.trace("Response status code: " + statusCode);
             
             String responseHeaders = item.response().headers().toString();
             byte[] responseBodyBytes = item.response().body().getBytes();
-            api.logging().logToOutput("Response headers length: " + responseHeaders.length() + ", body length: " + responseBodyBytes.length + " bytes");
+            logger.trace("Response headers length: " + responseHeaders.length() + ", body length: " + responseBodyBytes.length + " bytes");
             
             return new HttpResponseData(
                 Base64.getEncoder().encodeToString(String.valueOf(statusCode).getBytes()),
@@ -110,7 +113,7 @@ public class HttpRequestResponseSerializer {
                 Base64.getEncoder().encodeToString(responseBodyBytes)
             );
         } else {
-            api.logging().logToOutput("No response available for item " + itemNumber);
+            logger.debug("No response available for item " + itemNumber);
             return new HttpResponseData(
                 Base64.getEncoder().encodeToString("0".getBytes()),
                 Base64.getEncoder().encodeToString("".getBytes()),
@@ -120,7 +123,7 @@ public class HttpRequestResponseSerializer {
     }
     
     private AnnotationData serializeAnnotations(HttpRequestResponse item, int itemNumber) {
-        api.logging().logToOutput("Serializing annotations for item " + itemNumber);
+        logger.debug("Serializing annotations for item " + itemNumber);
         
         try {
             // Get annotations from the item
@@ -134,14 +137,14 @@ public class HttpRequestResponseSerializer {
                 if (item.annotations().hasNotes()) {
                     notes = item.annotations().notes();
                     hasNotes = true;
-                    api.logging().logToOutput("Item " + itemNumber + " has notes: " + notes.length() + " characters");
+                    logger.trace("Item " + itemNumber + " has notes: " + notes.length() + " characters");
                 }
                 
                 // Check if the item has highlight color
                 if (item.annotations().hasHighlightColor()) {
                     highlightColor = item.annotations().highlightColor().toString();
                     hasHighlightColor = true;
-                    api.logging().logToOutput("Item " + itemNumber + " has highlight color: " + highlightColor);
+                    logger.trace("Item " + itemNumber + " has highlight color: " + highlightColor);
                 }
             }
             
@@ -153,7 +156,7 @@ public class HttpRequestResponseSerializer {
             );
             
         } catch (Exception e) {
-            api.logging().logToError("Error serializing annotations for item " + itemNumber + ": " + e.getMessage());
+            logger.error("Error serializing annotations for item " + itemNumber, e);
             // Return empty annotation data on error
             return new AnnotationData(
                 Base64.getEncoder().encodeToString("".getBytes()),
@@ -167,7 +170,7 @@ public class HttpRequestResponseSerializer {
     private HttpRequestResponse deserializeItem(HttpRequestResponseData dataItem, int itemNumber) {
         HttpRequestData requestData = dataItem.request;
         if (requestData == null) {
-            api.logging().logToError("No request data found for object " + itemNumber);
+            logger.error("No request data found for object " + itemNumber);
             return null;
         }
         
@@ -177,7 +180,7 @@ public class HttpRequestResponseSerializer {
             String requestHeaders = new String(Base64.getDecoder().decode(requestData.headers));
             byte[] requestBody = Base64.getDecoder().decode(requestData.body);
             
-            api.logging().logToOutput("Decoded request - URL: " + requestUrl + ", Method: " + requestMethod);
+            logger.debug("Decoded request - URL: " + requestUrl + ", Method: " + requestMethod);
             
             HttpRequest request = HttpRequest.httpRequestFromUrl(requestUrl)
                 .withMethod(requestMethod)
@@ -195,24 +198,24 @@ public class HttpRequestResponseSerializer {
             HttpRequestResponse item;
             if (annotations != null) {
                 item = HttpRequestResponse.httpRequestResponse(request, response, annotations);
-                api.logging().logToOutput("Created HttpRequestResponse with restored annotations for object " + itemNumber);
+                logger.debug("Created HttpRequestResponse with restored annotations for object " + itemNumber);
             } else {
                 item = HttpRequestResponse.httpRequestResponse(request, response);
-                api.logging().logToOutput("Created HttpRequestResponse without annotations for object " + itemNumber);
+                logger.debug("Created HttpRequestResponse without annotations for object " + itemNumber);
             }
             
-            api.logging().logToOutput("Successfully created HttpRequestResponse with " + (response != null ? "response" : "request only") + " for object " + itemNumber);
+            logger.debug("Successfully created HttpRequestResponse with " + (response != null ? "response" : "request only") + " for object " + itemNumber);
             return item;
             
         } catch (Exception e) {
-            api.logging().logToError("Failed to decode request data for object " + itemNumber + ": " + e.getMessage());
+            logger.error("Failed to decode request data for object " + itemNumber, e);
             return null;
         }
     }
     
     private HttpResponse deserializeResponse(HttpResponseData responseData, int itemNumber) {
         if (responseData == null) {
-            api.logging().logToOutput("No response data available for object " + itemNumber);
+            logger.debug("No response data available for object " + itemNumber);
             return null;
         }
         
@@ -222,16 +225,16 @@ public class HttpRequestResponseSerializer {
             byte[] responseBody = Base64.getDecoder().decode(responseData.body);
             
             int statusCode = Integer.parseInt(statusCodeStr);
-            api.logging().logToOutput("Decoded response - Status: " + statusCode + ", Headers length: " + responseHeaders.length() + ", Body length: " + responseBody.length);
+            logger.debug("Decoded response - Status: " + statusCode + ", Headers length: " + responseHeaders.length() + ", Body length: " + responseBody.length);
             
             if (statusCode > 0) {
                 String responseString = "HTTP/1.1 " + statusCode + " OK\r\n" + responseHeaders + "\r\n\r\n" + new String(responseBody);
                 HttpResponse response = HttpResponse.httpResponse(responseString);
-                api.logging().logToOutput("Created HttpResponse for object " + itemNumber);
+                logger.debug("Created HttpResponse for object " + itemNumber);
                 return response;
             }
         } catch (Exception e) {
-            api.logging().logToError("Failed to decode response data for object " + itemNumber + ": " + e.getMessage());
+            logger.error("Failed to decode response data for object " + itemNumber, e);
         }
         
         return null;
@@ -240,23 +243,23 @@ public class HttpRequestResponseSerializer {
     private Annotations createAnnotations(AnnotationData annotationData, int itemNumber) {
         try {
             if (annotationData.hasNotes || annotationData.hasHighlightColor) {
-                api.logging().logToOutput("Creating annotations for item " + itemNumber);
+                logger.debug("Creating annotations for item " + itemNumber);
                 
                 String notes = "";
                 HighlightColor highlightColor = null;
                 
                 if (annotationData.hasNotes) {
                     notes = new String(Base64.getDecoder().decode(annotationData.notes));
-                    api.logging().logToOutput("Item " + itemNumber + " restoring notes: " + notes.length() + " characters");
+                    logger.trace("Item " + itemNumber + " restoring notes: " + notes.length() + " characters");
                 }
                 
                 if (annotationData.hasHighlightColor) {
                     String colorName = new String(Base64.getDecoder().decode(annotationData.highlightColor));
                     try {
                         highlightColor = HighlightColor.valueOf(colorName);
-                        api.logging().logToOutput("Item " + itemNumber + " restoring highlight color: " + colorName);
+                        logger.trace("Item " + itemNumber + " restoring highlight color: " + colorName);
                     } catch (IllegalArgumentException e) {
-                        api.logging().logToError("Invalid highlight color: " + colorName + " for item " + itemNumber);
+                        logger.error("Invalid highlight color: " + colorName + " for item " + itemNumber);
                     }
                 }
                 
@@ -273,7 +276,7 @@ public class HttpRequestResponseSerializer {
             return null; // No annotations to create
             
         } catch (Exception e) {
-            api.logging().logToError("Error creating annotations for item " + itemNumber + ": " + e.getMessage());
+            logger.error("Error creating annotations for item " + itemNumber, e);
             return null;
         }
     }
